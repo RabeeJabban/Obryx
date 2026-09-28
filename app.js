@@ -1,9 +1,5 @@
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
 
-// Your web app's Firebase configuration
+
 const firebaseConfig = {
   apiKey: "AIzaSyAFCT65NaUVuu1YYBkKZM693zX_fKM7-Io",
   authDomain: "sawa-82a09.firebaseapp.com",
@@ -12,9 +8,6 @@ const firebaseConfig = {
   messagingSenderId: "200029883618",
   appId: "1:200029883618:web:18059e0fa3127bf62f62bb"
 };
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
 
 
 import { initializeApp }
@@ -60,24 +53,28 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-  // Profil anlegen, falls es noch nicht existiert
-  const ref  = doc(db, "users", user.uid);
-  const snap = await getDoc(ref);
-
-  if (!snap.exists()) {
-    await setDoc(ref, {
-      name:      user.displayName || "",
-      email:     user.email || "",
-      photoURL:  user.photoURL || "",
-      rolle:     "nutzer",          // spaeter: "admin" fuer dich
-      erstelltAm: serverTimestamp()
-    });
-  }
-
+  // Zuerst anzeigen, damit ein Firestore-Problem den Login nicht blockiert
   document.getElementById("name").textContent  = user.displayName || "Willkommen";
   document.getElementById("email").textContent = user.email || "";
   document.getElementById("photo").src         = user.photoURL || "";
-
   loginView.classList.add("hidden");
   appView.classList.remove("hidden");
+
+  // Profil anlegen, falls es noch nicht existiert
+  try {
+    const ref  = doc(db, "users", user.uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      await setDoc(ref, {
+        name:       user.displayName || "",
+        email:      user.email || "",
+        photoURL:   user.photoURL || "",
+        rolle:      "nutzer",
+        erstelltAm: serverTimestamp()
+      });
+    }
+  } catch (e) {
+    errorBox.textContent = "Profil konnte nicht gespeichert werden: " + e.code;
+    console.error(e);
+  }
 });
