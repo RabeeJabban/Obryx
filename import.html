@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sawa – Daten übernehmen</title>
+  <style>
+    :root {
+      --grund: #FFFCF7; --flaeche: #fff; --linie: #E3DCD1;
+      --text: #1C1A17; --grau: #6B6259; --akzent: #D4533B;
+      --gruen: #2E9E8F; --rot: #C0392B;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 24px 16px 60px;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--grund); color: var(--text);
+    }
+    .blatt { max-width: 640px; margin: 0 auto; }
+    h1 { font-size: 24px; margin: 0 0 6px; }
+    .unter { color: var(--grau); font-size: 14px; margin: 0 0 24px; }
+
+    .kasten {
+      background: var(--flaeche); border: 1px solid var(--linie);
+      border-radius: 16px; padding: 20px; margin-bottom: 16px;
+    }
+    .kasten h2 {
+      font-size: 13px; font-weight: 700; letter-spacing: .6px;
+      text-transform: uppercase; color: var(--grau); margin: 0 0 14px;
+    }
+    .knopf {
+      padding: 12px 20px; border: 0; border-radius: 12px;
+      background: var(--akzent); color: #fff; font: inherit;
+      font-weight: 600; cursor: pointer;
+    }
+    .knopf.hell { background: #EDE7DC; color: var(--text); }
+    .knopf:disabled { opacity: .45; cursor: not-allowed; }
+    .knopf.voll { width: 100%; }
+
+    input[type=file] { font: inherit; width: 100%; }
+    .wer { display: flex; gap: 10px; margin-top: 4px; }
+    .wer button {
+      flex: 1; padding: 11px; border-radius: 11px; font: inherit;
+      font-weight: 600; cursor: pointer;
+      border: 1px solid var(--linie); background: var(--grund); color: var(--grau);
+    }
+    .wer button.aktiv {
+      background: var(--gruen); border-color: var(--gruen); color: #fff;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left; font-size: 11px; text-transform: uppercase;
+      letter-spacing: .5px; color: var(--grau); padding: 0 8px 8px 0;
+      font-weight: 700;
+    }
+    td { padding: 7px 8px 7px 0; border-top: 1px solid var(--linie);
+         vertical-align: top; }
+    td.n { color: var(--grau); white-space: nowrap; }
+    .pill {
+      display: inline-block; padding: 2px 8px; border-radius: 99px;
+      font-size: 11px; font-weight: 600; background: #EDE7DC; color: var(--grau);
+    }
+    .pill.serie { background: #DCEDEA; color: #1F6C61; }
+
+    .zeile { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .info { font-size: 14px; color: var(--grau); margin-top: 12px; line-height: 1.55; }
+    .fehler { color: var(--rot); font-size: 14px; margin-top: 12px; }
+    .gut { color: #1F6C61; font-size: 15px; font-weight: 600; margin-top: 12px; }
+    .versteckt { display: none !important; }
+    code { background: #EDE7DC; padding: 1px 5px; border-radius: 5px; font-size: 12px; }
+    ol { padding-left: 20px; margin: 0; }
+    ol li { margin-bottom: 8px; font-size: 14px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+<div class="blatt">
+
+  <h1>Daten übernehmen</h1>
+  <p class="unter">Überträgt die Einträge aus der alten Zeitplaner-App nach Sawa.</p>
+
+  <!-- 1 Anmelden -->
+  <div class="kasten">
+    <h2>1 · Anmelden</h2>
+    <div id="nichtAn">
+      <button class="knopf" id="loginBtn">Mit Google anmelden</button>
+    </div>
+    <div id="istAn" class="versteckt">
+      <div class="zeile">
+        <span id="werBinIch"></span>
+        <button class="knopf hell" id="logoutBtn">Abmelden</button>
+      </div>
+    </div>
+    <div id="loginFehler" class="fehler"></div>
+  </div>
+
+  <!-- 2 Datei -->
+  <div class="kasten">
+    <h2>2 · Datei auswählen</h2>
+    <input type="file" id="datei" accept=".json,application/json">
+    <p class="info">
+      Das ist <code>zeitplaner-daten.json</code> aus deinem Drive-Ordner TODO.
+      Lade sie dort herunter und wähle sie hier aus.
+    </p>
+    <div id="dateiFehler" class="fehler"></div>
+  </div>
+
+  <!-- 3 Wer -->
+  <div class="kasten versteckt" id="werKasten">
+    <h2>3 · Wessen Einträge</h2>
+    <div class="wer">
+      <button type="button" id="werRabee">Rabee</button>
+      <button type="button" id="werHaya">Haya</button>
+    </div>
+    <p class="info" id="werInfo"></p>
+  </div>
+
+  <!-- 4 Vorschau -->
+  <div class="kasten versteckt" id="vorschauKasten">
+    <h2>4 · Das wird übernommen</h2>
+    <div id="zahlen" class="info" style="margin-top:0"></div>
+    <div style="overflow-x:auto; margin-top:14px">
+      <table id="tabelle"></table>
+    </div>
+  </div>
+
+  <!-- 5 Start -->
+  <div class="kasten versteckt" id="startKasten">
+    <h2>5 · Übernehmen</h2>
+    <button class="knopf voll" id="startBtn">Jetzt übernehmen</button>
+    <div id="fortschritt" class="info"></div>
+    <div id="ergebnis"></div>
+    <p class="info">
+      Du kannst das gefahrlos mehrfach ausführen. Jeder Eintrag behält seine
+      alte Kennung, deshalb entstehen keine Doppelten – vorhandene werden
+      überschrieben.
+    </p>
+  </div>
+
+</div>
+
+<script type="module">
+// ===== Firebase-Zugangsdaten fuer das Projekt sawa-82a09 =====
+const firebaseConfig = {
+  apiKey: "AIzaSyAFCT65NaUVuu1YYBkKZM693zX_fKM7-Io",
+  authDomain: "sawa-82a09.firebaseapp.com",
+  projectId: "sawa-82a09",
+  storageBucket: "sawa-82a09.firebasestorage.app",
+  messagingSenderId: "200029883618",
+  appId: "1:200029883618:web:18059e0fa3127bf62f62bb"
+};
+// ==============================================================
+
+import { initializeApp }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, setDoc, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+const $ = (id) => document.getElementById(id);
+
+const MAIL_RABEE = "rabea.jabban.mrj@gmail.com";
+const MAIL_HAYA  = "haya.manla.97@gmail.com";
+
+let nutzer  = null;
+let rohDaten = null;   // die eingelesene Datei
+let wer      = null;   // "rabee" oder "haya"
+
+/* ---------- Anmelden ---------- */
+
+$("loginBtn").addEventListener("click", async () => {
+  $("loginFehler").textContent = "";
+  try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+  catch (e) {
+    $("loginFehler").textContent = "Anmeldung fehlgeschlagen: " + e.code;
+    console.error(e);
+  }
+});
+$("logoutBtn").addEventListener("click", () => signOut(auth));
+
+onAuthStateChanged(auth, (user) => {
+  nutzer = user;
+  $("nichtAn").classList.toggle("versteckt", !!user);
+  $("istAn").classList.toggle("versteckt", !user);
+
+  if (user) {
+    $("werBinIch").textContent =
+      "Angemeldet als " + (user.displayName || user.email);
+    // Vorauswahl anhand der E-Mail
+    const m = (user.email || "").toLowerCase();
+    if (!wer && m === MAIL_RABEE) setzeWer("rabee");
+    else if (!wer && m === MAIL_HAYA) setzeWer("haya");
+  }
+  neuZeichnen();
+});
+
+/* ---------- Datei einlesen ---------- */
+
+$("datei").addEventListener("change", async (ev) => {
+  $("dateiFehler").textContent = "";
+  rohDaten = null;
+  const f = ev.target.files[0];
+  if (!f) { neuZeichnen(); return; }
+
+  try {
+    const text = await f.text();
+    const j = JSON.parse(text);
+    if (!Array.isArray(j.events)) throw new Error("kein events-Feld");
+    rohDaten = j.events;
+  } catch (e) {
+    $("dateiFehler").textContent =
+      "Die Datei konnte nicht gelesen werden. Ist es die richtige? (" + e.message + ")";
+    console.error(e);
+  }
+  neuZeichnen();
+});
+
+/* ---------- Wer ---------- */
+
+function setzeWer(w) {
+  wer = w;
+  $("werRabee").classList.toggle("aktiv", w === "rabee");
+  $("werHaya").classList.toggle("aktiv", w === "haya");
+  neuZeichnen();
+}
+$("werRabee").addEventListener("click", () => setzeWer("rabee"));
+$("werHaya").addEventListener("click", () => setzeWer("haya"));
+
+/* ---------- Umrechnen auf das Sawa-Modell ---------- */
+
+function umrechnen(e, uid) {
+  const neu = {
+    ownerId: uid,
+    altId:   e.id,
+    typ:     e.kind === "event" ? "termin" : "task",
+    titel:   e.title || "",
+    start:   e.start || "",
+    ende:    e.end || "",
+    ort:     e.location || "",
+    notiz:   e.note || "",
+    frist:   ""
+  };
+
+  if (e.type === "single") {
+    neu.wiederholung = "einmal";
+    neu.datum  = e.date;
+    neu.status = neu.typ === "task" ? (e.done ? "erledigt" : "offen") : "";
+  } else {
+    neu.wiederholung = "serie";
+    neu.datum = e.startDate;
+    neu.serie = {
+      bis:           e.endDate || "",
+      wochentage:    (e.weekdays || []).slice().sort((a, b) => a - b),
+      ausnahmen:     (e.skip || []).slice().sort(),
+      ohneFeiertage: !!e.skipHolidays,
+      ohneFerien:    !!e.skipSchool
+    };
+    neu.status = neu.typ === "task" ? "offen" : "";
+    if (neu.typ === "task") {
+      neu.erledigtAn = (e.doneDates || []).slice().sort();
+    }
+  }
+
+  neu.suchtext = [neu.titel, neu.notiz, neu.ort].join(" ").toLowerCase().trim();
+  return neu;
+}
+
+// Welche Eintraege gehoeren dieser Person? "both" zaehlt fuer beide.
+function meine() {
+  if (!rohDaten || !wer) return [];
+  return rohDaten.filter((e) => e.owner === wer || e.owner === "both");
+}
+
+/* ---------- Anzeige ---------- */
+
+function neuZeichnen() {
+  const bereitFuerWer = !!(nutzer && rohDaten);
+  $("werKasten").classList.toggle("versteckt", !bereitFuerWer);
+
+  if (rohDaten) {
+    const r = rohDaten.filter((e) => e.owner === "rabee").length;
+    const h = rohDaten.filter((e) => e.owner === "haya").length;
+    const b = rohDaten.filter((e) => e.owner === "both").length;
+    $("werInfo").textContent =
+      `In der Datei stehen ${rohDaten.length} Einträge: ${r} von Rabee, ` +
+      `${h} von Haya, ${b} für beide. Gemeinsame Einträge bekommt jeder ` +
+      `als eigene Kopie, bis es Kreise gibt.`;
+  }
+
+  const liste = meine();
+  const zeigen = !!(nutzer && rohDaten && wer && liste.length);
+  $("vorschauKasten").classList.toggle("versteckt", !zeigen);
+  $("startKasten").classList.toggle("versteckt", !zeigen);
+  if (!zeigen) return;
+
+  const serien = liste.filter((e) => e.type === "recurring").length;
+  $("zahlen").textContent =
+    `${liste.length} Einträge: ${liste.length - serien} einmalig, ${serien} Serien.`;
+
+  const t = $("tabelle");
+  t.innerHTML = "<tr><th>Titel</th><th>Art</th><th>Datum</th><th>Zeit</th><th>Ort</th></tr>";
+  liste.forEach((e) => {
+    const tr = document.createElement("tr");
+    const serie = e.type === "recurring";
+
+    const c1 = document.createElement("td");
+    c1.textContent = e.title;
+    if (e.owner === "both") {
+      const p = document.createElement("span");
+      p.className = "pill";
+      p.textContent = "gemeinsam";
+      p.style.marginLeft = "6px";
+      c1.appendChild(p);
+    }
+
+    const c2 = document.createElement("td");
+    const p2 = document.createElement("span");
+    p2.className = "pill" + (serie ? " serie" : "");
+    p2.textContent = (e.kind === "event" ? "Termin" : "Aufgabe") + (serie ? ", Serie" : "");
+    c2.appendChild(p2);
+
+    const c3 = document.createElement("td");
+    c3.className = "n";
+    c3.textContent = serie ? e.startDate + " bis " + e.endDate : e.date;
+
+    const c4 = document.createElement("td");
+    c4.className = "n";
+    c4.textContent = e.start + (e.end ? "–" + e.end : "");
+
+    const c5 = document.createElement("td");
+    c5.className = "n";
+    c5.textContent = e.location || "";
+
+    [c1, c2, c3, c4, c5].forEach((c) => tr.appendChild(c));
+    t.appendChild(tr);
+  });
+}
+
+/* ---------- Übernehmen ---------- */
+
+$("startBtn").addEventListener("click", async () => {
+  if (!nutzer || !rohDaten || !wer) return;
+
+  const liste = meine();
+  $("startBtn").disabled = true;
+  $("ergebnis").innerHTML = "";
+
+  let ok = 0;
+  const fehler = [];
+
+  for (let i = 0; i < liste.length; i++) {
+    const e = liste[i];
+    $("fortschritt").textContent = `${i + 1} von ${liste.length} …`;
+    try {
+      const daten = umrechnen(e, nutzer.uid);
+      daten.erstelltAm = serverTimestamp();
+      // Feste Kennung: alte ID plus Nutzer. Dadurch ueberschreibt ein
+      // zweiter Durchlauf denselben Eintrag, statt einen neuen anzulegen.
+      const id = e.id + "_" + nutzer.uid.slice(0, 8);
+      await setDoc(doc(db, "eintraege", id), daten);
+      ok++;
+    } catch (err) {
+      console.error(e.id, err);
+      fehler.push(e.title + " (" + (err.code || err.message) + ")");
+    }
+  }
+
+  $("fortschritt").textContent = "";
+  const d = document.createElement("div");
+  if (fehler.length) {
+    d.className = "fehler";
+    d.textContent = `${ok} übernommen, ${fehler.length} fehlgeschlagen: ` +
+                    fehler.join(", ");
+  } else {
+    d.className = "gut";
+    d.textContent = `Fertig. ${ok} Einträge sind jetzt in Sawa.`;
+  }
+  $("ergebnis").appendChild(d);
+  $("startBtn").disabled = false;
+});
+</script>
+</body>
+</html>
