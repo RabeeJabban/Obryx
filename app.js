@@ -25,15 +25,19 @@ const db   = getFirestore(app);
 
 const $ = (id) => document.getElementById(id);
 
-const WOCHENTAGE = ["Sonntag","Montag","Dienstag","Mittwoch",
-                    "Donnerstag","Freitag","Samstag"];
-const KURZTAGE   = ["So","Mo","Di","Mi","Do","Fr","Sa"];
+const WOCHENTAGE = ["Montag","Dienstag","Mittwoch","Donnerstag",
+                    "Freitag","Samstag","Sonntag"];
+const KURZ       = ["Mo","Di","Mi","Do","Fr","Sa","So"];
 const MONATE = ["Januar","Februar","März","April","Mai","Juni","Juli",
                 "August","September","Oktober","November","Dezember"];
 
-// Datum als YYYY-MM-DD in LOKALER Zeit.
-// toISOString() waere falsch: das rechnet nach UTC um und verschiebt
-// abends den Tag um eins nach vorn.
+/* ============================================================
+   DATUM
+   Alle Daten sind Text in der Form JJJJ-MM-TT.
+   toISOString() wird bewusst NICHT benutzt: das rechnet nach UTC
+   um und verschiebt abends den Tag um eins nach vorn.
+   ============================================================ */
+
 function alsText(d) {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const t = String(d.getDate()).padStart(2, "0");
@@ -43,21 +47,163 @@ function ausText(s) {
   const [j, m, t] = s.split("-").map(Number);
   return new Date(j, m - 1, t);
 }
-function tageBis(zieltext, vontext) {
-  const ms = ausText(zieltext) - ausText(vontext);
-  return Math.round(ms / 86400000);
+function tageBis(ziel, von) {
+  return Math.round((ausText(ziel) - ausText(von)) / 86400000);
 }
+// 0 = Montag ... 6 = Sonntag. JavaScript zaehlt anders (0 = Sonntag),
+// deshalb die Verschiebung. Die alte App zaehlt auch ab Montag.
+function wochentag(text) {
+  return (ausText(text).getDay() + 6) % 7;
+}
+function kurzDatum(text) {
+  const d = ausText(text);
+  return `${KURZ[wochentag(text)]}, ${d.getDate()}.${d.getMonth() + 1}.`;
+}
+
+/* ============================================================
+   GESETZLICHE FEIERTAGE NRW
+   Elf Tage im Jahr. Sechs davon haengen am Ostersonntag, der
+   jedes Jahr woanders liegt und deshalb berechnet wird
+   (Gauss-Osterformel in der Fassung von Meeus/Jones/Butcher).
+   ============================================================ */
+
+const feiertagCache = {};
+
+function ostersonntag(jahr) {
+  const a = jahr % 19;
+  const b = Math.floor(jahr / 100);
+  const c = jahr % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const monat = Math.floor((h + l - 7 * m + 114) / 31);
+  const tag   = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(jahr, monat - 1, tag);
+}
+
+function plusTage(d, n) {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+}
+
+function feiertageNRW(jahr) {
+  if (feiertagCache[jahr]) return feiertagCache[jahr];
+
+  const o = ostersonntag(jahr);
+  const liste = {
+    [`${jahr}-01-01`]: "Neujahr",
+    [alsText(plusTage(o, -2))]: "Karfreitag",
+    [alsText(plusTage(o,  1))]: "Ostermontag",
+    [`${jahr}-05-01`]: "Tag der Arbeit",
+    [alsText(plusTage(o, 39))]: "Christi Himmelfahrt",
+    [alsText(plusTage(o, 50))]: "Pfingstmontag",
+    [alsText(plusTage(o, 60))]: "Fronleichnam",
+    [`${jahr}-10-03`]: "Tag der Deutschen Einheit",
+    [`${jahr}-11-01`]: "Allerheiligen",
+    [`${jahr}-12-25`]: "1. Weihnachtstag",
+    [`${jahr}-12-26`]: "2. Weihnachtstag"
+  };
+
+  feiertagCache[jahr] = liste;
+  return liste;
+}
+
+function feiertagName(text) {
+  return feiertageNRW(Number(text.slice(0, 4)))[text] || null;
+}
+
+/* ============================================================
+   SCHULFERIEN NRW
+   Quelle: Ferienordnung des Schulministeriums NRW.
+   Beide Tage sind eingeschlossen.
+   ============================================================ */
+
+const FERIEN_NRW = [
+  ["2026-07-20", "2026-09-01", "Sommerferien"],
+  ["2026-10-17", "2026-10-31", "Herbstferien"],
+  ["2026-12-23", "2027-01-06", "Weihnachtsferien"],
+  ["2027-03-22", "2027-04-03", "Osterferien"],
+  ["2027-05-18", "2027-05-18", "Pfingstferien"],
+  ["2027-07-19", "2027-08-31", "Sommerferien"],
+  ["2027-10-23", "2027-11-06", "Herbstferien"],
+  ["2027-12-24", "2028-01-08", "Weihnachtsferien"],
+  ["2028-04-10", "2028-04-22", "Osterferien"],
+  ["2028-07-10", "2028-08-22", "Sommerferien"],
+  ["2028-10-23", "2028-11-04", "Herbstferien"],
+  ["2028-12-21", "2029-01-05", "Weihnachtsferien"],
+  ["2029-03-26", "2029-04-07", "Osterferien"],
+  ["2029-05-22", "2029-05-22", "Pfingstferien"]
+];
+
+function ferienName(text) {
+  for (const [von, bis, name] of FERIEN_NRW) {
+    if (text >= von && text <= bis) return name;
+  }
+  return null;
+}
+
+/* ============================================================
+   SERIEN
+   Entscheidet, ob eine Serie an einem bestimmten Tag stattfindet.
+   ============================================================ */
+
+function istSerie(e) {
+  return e.wiederholung === "serie" && e.serie;
+}
+
+function serieAnTag(e, tag) {
+  if (!istSerie(e)) return false;
+
+  const s = e.serie;
+  if (tag < e.datum) return false;
+  if (s.bis && tag > s.bis) return false;
+  if (!Array.isArray(s.wochentage) || !s.wochentage.includes(wochentag(tag))) return false;
+  if (Array.isArray(s.ausnahmen) && s.ausnahmen.includes(tag)) return false;
+  if (s.ohneFeiertage && feiertagName(tag)) return false;
+  if (s.ohneFerien && ferienName(tag)) return false;
+
+  return true;
+}
+
+function serieErledigt(e, tag) {
+  return Array.isArray(e.erledigtAn) && e.erledigtAn.includes(tag);
+}
+
+/* ============================================================
+   ZUSTAND
+   ============================================================ */
 
 let aktiverTag = alsText(new Date());
 let nutzer     = null;
-let stopTag    = null;   // beendet den Listener fuer den aktiven Tag
-let stopOffen  = null;   // beendet den Listener fuer alte offene Aufgaben
-let bearbeiteId = null;
-let typ        = "termin";
-let sucheAn    = false;
-let alleCache  = null;   // fuer die Suche einmal geladene Eintraege
 
-// ---------- Anmeldung ----------
+let stopEinzel = null;   // Listener: Eintraege dieses Tages
+let stopSerien = null;   // Listener: alle Serien
+let stopOffen  = null;   // Listener: alte offene Aufgaben
+
+let einzelHeute = [];
+let alleSerien  = [];
+let alteOffene  = [];
+
+let bearbeiteId  = null;
+let bearbeiteTag = null;   // bei Serien: der Tag, von dem aus geoeffnet wurde
+let typ          = "termin";
+let wiederholung = "einmal";
+let gewaehlteTage = [];
+
+let sucheAn   = false;
+let alleCache = null;
+
+/* ============================================================
+   ANMELDUNG
+   ============================================================ */
+
 $("loginBtn").addEventListener("click", async () => {
   $("loginFehler").textContent = "";
   try {
@@ -71,8 +217,7 @@ $("loginBtn").addEventListener("click", async () => {
 $("logoutBtn").addEventListener("click", () => signOut(auth));
 
 onAuthStateChanged(auth, async (user) => {
-  if (stopTag)   { stopTag();   stopTag = null; }
-  if (stopOffen) { stopOffen(); stopOffen = null; }
+  alleListenerStoppen();
   alleCache = null;
 
   if (!user) {
@@ -86,9 +231,10 @@ onAuthStateChanged(auth, async (user) => {
   $("photo").src = user.photoURL || "";
   $("loginView").classList.add("versteckt");
   $("appView").classList.remove("versteckt");
+
+  starteSerienListener();
   zeigeTag();
 
-  // Profil anlegen, falls es noch nicht existiert
   try {
     const ref = doc(db, "users", user.uid);
     if (!(await getDoc(ref)).exists()) {
@@ -105,39 +251,58 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-// ---------- Datum blaettern ----------
-function schiebe(tage) {
-  const d = ausText(aktiverTag);
-  d.setDate(d.getDate() + tage);
-  aktiverTag = alsText(d);
-  zeigeTag();
+function alleListenerStoppen() {
+  [stopEinzel, stopSerien, stopOffen].forEach((f) => { if (f) f(); });
+  stopEinzel = stopSerien = stopOffen = null;
 }
-$("zurueck").addEventListener("click", () => schiebe(-1));
-$("vor").addEventListener("click", () => schiebe(1));
-$("heuteBtn").addEventListener("click", () => {
-  aktiverTag = alsText(new Date());
-  zeigeTag();
-});
 
-// ---------- Tagesansicht ----------
-let tagesEintraege = [];
-let alteOffene     = [];
+/* ============================================================
+   DATEN LADEN
+   ============================================================ */
+
+// Serien werden EINMAL geladen, nicht pro Tag. Es sind wenige
+// Dokumente, und beim Blaettern muss dann nichts nachgeladen werden.
+function starteSerienListener() {
+  if (stopSerien) stopSerien();
+  stopSerien = onSnapshot(
+    query(
+      collection(db, "eintraege"),
+      where("ownerId", "==", nutzer.uid),
+      where("wiederholung", "==", "serie")
+    ),
+    (snap) => {
+      alleSerien = snap.docs.map((x) => ({ id: x.id, ...x.data() }));
+      male();
+    },
+    (e) => ladefehler(e)
+  );
+}
 
 function zeigeTag() {
   const d = ausText(aktiverTag);
   $("tagLang").textContent =
-    `${WOCHENTAGE[d.getDay()]}, ${d.getDate()}. ${MONATE[d.getMonth()]}`;
+    `${WOCHENTAGE[wochentag(aktiverTag)]}, ${d.getDate()}. ${MONATE[d.getMonth()]}`;
 
   const heute = alsText(new Date());
-  $("tagHinweis").textContent =
-    aktiverTag === heute ? "Heute" : (aktiverTag < heute ? "Vergangen" : "");
+  const hinweise = [];
+  if (aktiverTag === heute) hinweise.push("Heute");
+  else if (aktiverTag < heute) hinweise.push("Vergangen");
+  const f = feiertagName(aktiverTag);
+  const s = ferienName(aktiverTag);
+  if (f) hinweise.push(f);
+  if (s) hinweise.push(s);
+  $("tagHinweis").textContent = hinweise.join(" · ");
 
-  if (stopTag)   { stopTag();   stopTag = null; }
-  if (stopOffen) { stopOffen(); stopOffen = null; }
+  if (stopEinzel) { stopEinzel(); stopEinzel = null; }
+  if (stopOffen)  { stopOffen();  stopOffen  = null; }
   if (!nutzer) return;
 
-  // Abfrage 1: alles an diesem Tag
-  stopTag = onSnapshot(
+  // leeren, sonst blitzt beim Blaettern kurz der alte Tag auf
+  einzelHeute = [];
+  alteOffene  = [];
+  male();
+
+  stopEinzel = onSnapshot(
     query(
       collection(db, "eintraege"),
       where("ownerId", "==", nutzer.uid),
@@ -145,13 +310,16 @@ function zeigeTag() {
       orderBy("start")
     ),
     (snap) => {
-      tagesEintraege = snap.docs.map((x) => ({ id: x.id, ...x.data() }));
-      maleTag();
+      // Serien kommen aus dem eigenen Listener, sonst waeren sie
+      // an ihrem ersten Tag doppelt in der Liste.
+      einzelHeute = snap.docs
+        .map((x) => ({ id: x.id, ...x.data() }))
+        .filter((e) => !istSerie(e));
+      male();
     },
-    (e) => zeigeLadefehler(e)
+    (e) => ladefehler(e)
   );
 
-  // Abfrage 2: offene Aufgaben aus der Vergangenheit
   stopOffen = onSnapshot(
     query(
       collection(db, "eintraege"),
@@ -162,46 +330,59 @@ function zeigeTag() {
       orderBy("datum")
     ),
     (snap) => {
-      alteOffene = snap.docs.map((x) => ({ id: x.id, ...x.data() }));
-      maleTag();
+      alteOffene = snap.docs
+        .map((x) => ({ id: x.id, ...x.data() }))
+        .filter((e) => !istSerie(e));
+      male();
     },
-    (e) => zeigeLadefehler(e)
+    (e) => ladefehler(e)
   );
 }
 
-function zeigeLadefehler(e) {
+function ladefehler(e) {
   console.error(e);
   $("liste").innerHTML =
     '<div class="leer">Konnte nicht laden. Drücke F12 und schau in die ' +
     'Konsole – dort steht meist ein Link zum Anlegen des Index.</div>';
 }
 
-function maleTag() {
+/* ============================================================
+   TAGESANSICHT ZEICHNEN
+   ============================================================ */
+
+function male() {
   if (sucheAn) return;
+
   const box = $("liste");
   box.innerHTML = "";
 
-  const termine = tagesEintraege.filter((e) => e.typ === "termin");
-  const tasks   = tagesEintraege.filter((e) => e.typ === "task");
+  const serienHeute = alleSerien.filter((e) => serieAnTag(e, aktiverTag));
+  const alles = [...einzelHeute, ...serienHeute];
+
+  const termine = alles.filter((e) => e.typ === "termin")
+                       .sort((a, b) => (a.start || "").localeCompare(b.start || ""));
+  const tasks   = alles.filter((e) => e.typ === "task")
+                       .sort((a, b) => (a.frist || "9999").localeCompare(b.frist || "9999"));
 
   if (!termine.length && !tasks.length && !alteOffene.length) {
-    box.innerHTML = '<div class="leer">Nichts eingetragen für diesen Tag.</div>';
+    const f = feiertagName(aktiverTag);
+    box.innerHTML = '<div class="leer">' +
+      (f ? f + " – nichts eingetragen." : "Nichts eingetragen für diesen Tag.") +
+      "</div>";
     return;
   }
 
   if (alteOffene.length) {
     box.appendChild(trenner("Noch offen von früher", true));
-    alteOffene.forEach((e) => box.appendChild(zeile(e, true)));
+    alteOffene.forEach((e) => box.appendChild(zeile(e, e.datum, true)));
   }
   if (termine.length) {
     box.appendChild(trenner("Termine"));
-    termine.forEach((e) => box.appendChild(zeile(e)));
+    termine.forEach((e) => box.appendChild(zeile(e, aktiverTag)));
   }
   if (tasks.length) {
     box.appendChild(trenner("Aufgaben"));
-    // faellige zuerst
-    tasks.sort((a, b) => (a.frist || "9999") .localeCompare(b.frist || "9999"));
-    tasks.forEach((e) => box.appendChild(zeile(e)));
+    tasks.forEach((e) => box.appendChild(zeile(e, aktiverTag)));
   }
 }
 
@@ -212,22 +393,29 @@ function trenner(text, warn) {
   return d;
 }
 
-// ---------- eine Zeile ----------
-function fristMarke(e) {
+/* ============================================================
+   EINE ZEILE
+   tag = der Tag, in dessen Zusammenhang der Eintrag gezeigt wird.
+   Bei Serien entscheidet er ueber Haken und Fristanzeige.
+   ============================================================ */
+
+function erledigtStatus(e, tag) {
+  return istSerie(e) ? serieErledigt(e, tag) : e.status === "erledigt";
+}
+
+function fristMarke(e, tag) {
   if (e.typ !== "task" || !e.frist) return null;
 
   const heute = alsText(new Date());
   const tage  = tageBis(e.frist, heute);
-  const d     = ausText(e.frist);
-  const datum = `${KURZTAGE[d.getDay()]}, ${d.getDate()}.${d.getMonth() + 1}.`;
 
-  let text, klasse;
-  if (e.status === "erledigt")  { text = "Frist war " + datum; klasse = ""; }
-  else if (tage < 0)  { text = Math.abs(tage) + " Tage überfällig"; klasse = " spaet"; }
+  let text, klasse = "";
+  if (erledigtStatus(e, tag))  text = "Frist war " + kurzDatum(e.frist);
+  else if (tage < 0)   { text = Math.abs(tage) + " Tage überfällig"; klasse = " spaet"; }
   else if (tage === 0) { text = "Heute fällig";                     klasse = " jetzt"; }
   else if (tage === 1) { text = "Morgen fällig";                    klasse = " bald"; }
   else if (tage <= 3)  { text = "In " + tage + " Tagen fällig";     klasse = " bald"; }
-  else                 { text = "Frist " + datum;                   klasse = ""; }
+  else                 { text = "Frist " + kurzDatum(e.frist); }
 
   const s = document.createElement("span");
   s.className = "marke" + klasse;
@@ -235,27 +423,38 @@ function fristMarke(e) {
   return s;
 }
 
-function zeile(e, zeigeDatum) {
+async function hakenUmschalten(e, tag) {
+  const ref = doc(db, "eintraege", e.id);
+
+  if (istSerie(e)) {
+    const liste = Array.isArray(e.erledigtAn) ? [...e.erledigtAn] : [];
+    const i = liste.indexOf(tag);
+    if (i >= 0) liste.splice(i, 1); else liste.push(tag);
+    await updateDoc(ref, { erledigtAn: liste });
+  } else {
+    await updateDoc(ref, {
+      status: e.status === "erledigt" ? "offen" : "erledigt"
+    });
+  }
+}
+
+function zeile(e, tag, zeigeDatum) {
+  const erledigt = erledigtStatus(e, tag);
   const heute = alsText(new Date());
-  const ueberfaellig =
-    e.typ === "task" && e.status === "offen" && e.frist && e.frist < heute;
+  const faellig = e.typ === "task" && !erledigt && e.frist && e.frist < heute;
 
   const wrap = document.createElement("div");
   wrap.className = "eintrag"
-    + (e.status === "erledigt" ? " erledigt" : "")
-    + (ueberfaellig ? " faellig" : "");
+    + (erledigt ? " erledigt" : "")
+    + (faellig ? " faellig" : "");
 
   if (e.typ === "task") {
     const h = document.createElement("button");
-    h.className = "haken" + (e.status === "erledigt" ? " an" : "");
+    h.className = "haken" + (erledigt ? " an" : "");
     h.type = "button";
     h.setAttribute("aria-label", "Aufgabe abhaken");
-    h.textContent = e.status === "erledigt" ? "✓" : "";
-    h.addEventListener("click", () =>
-      updateDoc(doc(db, "eintraege", e.id), {
-        status: e.status === "erledigt" ? "offen" : "erledigt"
-      })
-    );
+    h.textContent = erledigt ? "✓" : "";
+    h.addEventListener("click", () => hakenUmschalten(e, tag));
     wrap.appendChild(h);
   } else {
     const z = document.createElement("div");
@@ -270,13 +469,17 @@ function zeile(e, zeigeDatum) {
   const t = document.createElement("div");
   t.className = "titel";
   t.textContent = e.titel;
+  if (istSerie(e)) {
+    const ring = document.createElement("span");
+    ring.className = "serieZeichen";
+    ring.textContent = "↻";
+    ring.title = "Serie";
+    t.appendChild(ring);
+  }
   inhalt.appendChild(t);
 
   const zusatz = [];
-  if (zeigeDatum) {
-    const d = ausText(e.datum);
-    zusatz.push(`${KURZTAGE[d.getDay()]}, ${d.getDate()}.${d.getMonth() + 1}.`);
-  }
+  if (zeigeDatum) zusatz.push(kurzDatum(e.datum));
   if (e.typ === "termin" && e.ende) zusatz.push("bis " + e.ende);
   if (e.typ === "task" && e.start)  zusatz.push(e.start);
   if (e.ort)   zusatz.push(e.ort);
@@ -288,10 +491,10 @@ function zeile(e, zeigeDatum) {
     inhalt.appendChild(n);
   }
 
-  const marke = fristMarke(e);
+  const marke = fristMarke(e, tag);
   if (marke) inhalt.appendChild(marke);
 
-  inhalt.addEventListener("click", () => oeffneFormular(e));
+  inhalt.addEventListener("click", () => oeffneFormular(e, tag));
   wrap.appendChild(inhalt);
 
   const weg = document.createElement("button");
@@ -300,7 +503,12 @@ function zeile(e, zeigeDatum) {
   weg.setAttribute("aria-label", "Löschen");
   weg.textContent = "×";
   weg.addEventListener("click", async () => {
-    if (!confirm("Diesen Eintrag löschen?")) return;
+    const frage = istSerie(e)
+      ? "Die ganze Serie „" + e.titel + "“ löschen?\n\n" +
+        "Wenn nur dieser eine Tag ausfallen soll: abbrechen, auf den " +
+        "Eintrag tippen und dort „Diesen Tag absagen“ wählen."
+      : "Diesen Eintrag löschen?";
+    if (!confirm(frage)) return;
     await deleteDoc(doc(db, "eintraege", e.id));
     alleCache = null;
     if (sucheAn) sucheAusfuehren();
@@ -310,15 +518,17 @@ function zeile(e, zeigeDatum) {
   return wrap;
 }
 
-// ---------- Suche ----------
+/* ============================================================
+   SUCHE
+   ============================================================ */
+
 $("sucheBtn").addEventListener("click", () => {
   sucheAn = true;
   $("suchleiste").classList.remove("versteckt");
   $("datumsleiste").classList.add("versteckt");
   $("sucheFeld").value = "";
   $("sucheFeld").focus();
-  $("liste").innerHTML =
-    '<div class="leer">Tippe mindestens zwei Zeichen.</div>';
+  $("liste").innerHTML = '<div class="leer">Tippe mindestens zwei Zeichen.</div>';
 });
 
 $("sucheZu").addEventListener("click", schliesseSuche);
@@ -327,7 +537,7 @@ function schliesseSuche() {
   sucheAn = false;
   $("suchleiste").classList.add("versteckt");
   $("datumsleiste").classList.remove("versteckt");
-  maleTag();
+  male();
 }
 
 $("sucheFeld").addEventListener("input", sucheAusfuehren);
@@ -363,11 +573,10 @@ async function sucheAusfuehren() {
   try {
     alle = await ladeAlle();
   } catch (e) {
-    zeigeLadefehler(e);
+    ladefehler(e);
     return;
   }
 
-  // Falls sich das Suchwort waehrend des Ladens geaendert hat
   if ($("sucheFeld").value.trim().toLowerCase() !== wort) return;
 
   const treffer = alle.filter((e) => {
@@ -383,23 +592,62 @@ async function sucheAusfuehren() {
   }
 
   box.appendChild(trenner(treffer.length + " Treffer"));
-  treffer.forEach((e) => box.appendChild(zeile(e, true)));
+  treffer.forEach((e) => box.appendChild(zeile(e, e.datum, true)));
 }
 
-// ---------- Formular ----------
+/* ============================================================
+   FORMULAR
+   ============================================================ */
+
 function setzeTyp(neu) {
   typ = neu;
   $("typTermin").classList.toggle("aktiv", neu === "termin");
   $("typTask").classList.toggle("aktiv", neu === "task");
-
   $("endeFeld").classList.toggle("versteckt", neu !== "termin");
   $("fristFeld").classList.toggle("versteckt", neu !== "task");
-
-  $("lblDatum").textContent = neu === "termin" ? "Datum" : "Geplant am";
   $("lblStart").textContent = neu === "termin" ? "Von" : "Uhrzeit (optional)";
+  setzeLabelDatum();
 }
+
+function setzeWiederholung(neu) {
+  wiederholung = neu;
+  $("wdhEinmal").classList.toggle("aktiv", neu === "einmal");
+  $("wdhSerie").classList.toggle("aktiv", neu === "serie");
+  $("serieFeld").classList.toggle("versteckt", neu !== "serie");
+  setzeLabelDatum();
+}
+
+function setzeLabelDatum() {
+  $("lblDatum").textContent =
+    wiederholung === "serie" ? "Erster Tag"
+    : typ === "termin" ? "Datum" : "Geplant am";
+}
+
 $("typTermin").addEventListener("click", () => setzeTyp("termin"));
 $("typTask").addEventListener("click", () => setzeTyp("task"));
+$("wdhEinmal").addEventListener("click", () => setzeWiederholung("einmal"));
+$("wdhSerie").addEventListener("click", () => setzeWiederholung("serie"));
+
+// Wochentag-Knoepfe bauen
+KURZ.forEach((name, i) => {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "tagKnopf";
+  b.textContent = name;
+  b.dataset.tag = i;
+  b.addEventListener("click", () => {
+    const k = gewaehlteTage.indexOf(i);
+    if (k >= 0) gewaehlteTage.splice(k, 1); else gewaehlteTage.push(i);
+    b.classList.toggle("aktiv", k < 0);
+  });
+  $("tageWahl").appendChild(b);
+});
+
+function zeigeGewaehlteTage() {
+  $("tageWahl").querySelectorAll(".tagKnopf").forEach((b) => {
+    b.classList.toggle("aktiv", gewaehlteTage.includes(Number(b.dataset.tag)));
+  });
+}
 
 function naechsteStunde() {
   const d = new Date();
@@ -410,12 +658,15 @@ function naechsteStunde() {
   return String(d.getHours()).padStart(2, "0") + ":00";
 }
 
-function oeffneFormular(e) {
+function oeffneFormular(e, tag) {
   $("formFehler").textContent = "";
-  bearbeiteId = e ? e.id : null;
+  bearbeiteId  = e ? e.id : null;
+  bearbeiteTag = tag || aktiverTag;
   $("dlgTitel").textContent = e ? "Eintrag bearbeiten" : "Neuer Eintrag";
 
   setzeTyp(e ? e.typ : "termin");
+  setzeWiederholung(e && istSerie(e) ? "serie" : "einmal");
+
   $("fTitel").value = e ? e.titel : "";
   $("fDatum").value = e ? e.datum : aktiverTag;
   $("fStart").value = e ? (e.start || "") : naechsteStunde();
@@ -424,11 +675,41 @@ function oeffneFormular(e) {
   $("fOrt").value   = e ? (e.ort   || "") : "";
   $("fNotiz").value = e ? (e.notiz || "") : "";
 
+  const s = e && e.serie ? e.serie : null;
+  gewaehlteTage = s && Array.isArray(s.wochentage) ? [...s.wochentage] : [];
+  if (!e) gewaehlteTage = [wochentag(aktiverTag)];
+  zeigeGewaehlteTage();
+
+  $("fBis").value        = s ? (s.bis || "") : "";
+  $("fFeiertage").checked = s ? !!s.ohneFeiertage : true;
+  $("fFerien").checked    = s ? !!s.ohneFerien    : false;
+
+  // "Diesen Tag absagen" nur beim Bearbeiten einer Serie
+  const zeigeAbsage = !!(e && istSerie(e));
+  $("absagenBtn").classList.toggle("versteckt", !zeigeAbsage);
+  if (zeigeAbsage) $("absagenBtn").textContent = "Am " + kurzDatum(bearbeiteTag) + " absagen";
+
   $("dlg").showModal();
 }
 
-$("neuBtn").addEventListener("click", () => oeffneFormular(null));
+$("neuBtn").addEventListener("click", () => oeffneFormular(null, aktiverTag));
 $("abbrechen").addEventListener("click", () => $("dlg").close());
+
+// Einen einzelnen Tag aus der Serie nehmen
+$("absagenBtn").addEventListener("click", async () => {
+  const e = alleSerien.find((x) => x.id === bearbeiteId);
+  if (!e) return;
+  const liste = Array.isArray(e.serie.ausnahmen) ? [...e.serie.ausnahmen] : [];
+  if (!liste.includes(bearbeiteTag)) liste.push(bearbeiteTag);
+  try {
+    await updateDoc(doc(db, "eintraege", e.id),
+                    { "serie.ausnahmen": liste });
+    $("dlg").close();
+  } catch (err) {
+    $("formFehler").textContent = "Fehlgeschlagen: " + err.code;
+    console.error(err);
+  }
+});
 
 $("form").addEventListener("submit", async (ev) => {
   ev.preventDefault();
@@ -441,6 +722,7 @@ $("form").addEventListener("submit", async (ev) => {
   const frist = $("fFrist").value;
   const ort   = $("fOrt").value.trim();
   const notiz = $("fNotiz").value.trim();
+  const bis   = $("fBis").value;
 
   if (!titel || !datum) {
     $("formFehler").textContent = "Titel und Datum sind nötig.";
@@ -455,9 +737,22 @@ $("form").addEventListener("submit", async (ev) => {
     return;
   }
   if (typ === "task" && frist && frist < datum) {
-    $("formFehler").textContent =
-      "Die Frist liegt vor dem geplanten Tag. Bitte prüfen.";
+    $("formFehler").textContent = "Die Frist liegt vor dem geplanten Tag.";
     return;
+  }
+  if (wiederholung === "serie") {
+    if (!gewaehlteTage.length) {
+      $("formFehler").textContent = "Wähle mindestens einen Wochentag.";
+      return;
+    }
+    if (!bis) {
+      $("formFehler").textContent = "Eine Serie braucht ein Enddatum.";
+      return;
+    }
+    if (bis < datum) {
+      $("formFehler").textContent = "Das Serienende liegt vor dem ersten Tag.";
+      return;
+    }
   }
 
   const daten = {
@@ -470,17 +765,36 @@ $("form").addEventListener("submit", async (ev) => {
     frist: typ === "task"   ? (frist || "") : "",
     ort,
     notiz,
+    wiederholung,
     suchtext: (titel + " " + notiz + " " + ort).toLowerCase()
   };
 
+  if (wiederholung === "serie") {
+    const alt = bearbeiteId
+      ? alleSerien.find((x) => x.id === bearbeiteId)
+      : null;
+    daten.serie = {
+      bis,
+      wochentage: [...gewaehlteTage].sort((a, b) => a - b),
+      // bestehende Ausnahmen behalten
+      ausnahmen: alt && alt.serie && Array.isArray(alt.serie.ausnahmen)
+                 ? alt.serie.ausnahmen : [],
+      ohneFeiertage: $("fFeiertage").checked,
+      ohneFerien:    $("fFerien").checked
+    };
+  }
+
   try {
     if (bearbeiteId) {
-      // wiederholung und status bleiben unangetastet
       await updateDoc(doc(db, "eintraege", bearbeiteId), daten);
     } else {
-      daten.wiederholung = "einmal";
-      daten.status = typ === "task" ? "offen" : "";
       daten.erstelltAm = serverTimestamp();
+      if (typ === "task") {
+        daten.status = "offen";
+        if (wiederholung === "serie") daten.erledigtAn = [];
+      } else {
+        daten.status = "";
+      }
       await addDoc(collection(db, "eintraege"), daten);
     }
 
@@ -489,7 +803,7 @@ $("form").addEventListener("submit", async (ev) => {
 
     if (sucheAn) {
       sucheAusfuehren();
-    } else if (datum !== aktiverTag) {
+    } else if (wiederholung === "einmal" && datum !== aktiverTag) {
       aktiverTag = datum;
       zeigeTag();
     }
@@ -497,4 +811,21 @@ $("form").addEventListener("submit", async (ev) => {
     $("formFehler").textContent = "Speichern fehlgeschlagen: " + e.code;
     console.error(e);
   }
+});
+
+/* ============================================================
+   DATUM BLAETTERN
+   ============================================================ */
+
+function schiebe(tage) {
+  const d = ausText(aktiverTag);
+  d.setDate(d.getDate() + tage);
+  aktiverTag = alsText(d);
+  zeigeTag();
+}
+$("zurueck").addEventListener("click", () => schiebe(-1));
+$("vor").addEventListener("click", () => schiebe(1));
+$("heuteBtn").addEventListener("click", () => {
+  aktiverTag = alsText(new Date());
+  zeigeTag();
 });
