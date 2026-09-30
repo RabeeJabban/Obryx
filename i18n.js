@@ -37,6 +37,63 @@ de: {
   datLang: "{wt}, {tag}. {monat}",
   datKurz: "{wt}, {tag}.{monat}.",
 
+
+  // ---- Balkenplan ----
+  planNiemand: "Heute ist niemand eingetragen.",
+  planBelegt: "Belegt",
+  planIch: "Ich",
+  planGanzerTag: "Ohne Uhrzeit",
+  planJetzt: "jetzt",
+  planFrei: "frei",
+  planBuchen: "Diese Zeit nehmen",
+  planVergeben: "vergeben",
+  planEngerZeigen: "Enger",
+  planWeiterZeigen: "Weiter",
+
+  // ---- Kreis-Einstellungen ----
+  kEinstellungen: "Einstellungen",
+  kBelegung: "Wie die Zeit vergeben wird",
+  kParallel: "Gleichzeitig",
+  kExklusiv: "Nur einer",
+  kBelegungHinweis: "Gleichzeitig: mehrere können zur selben Zeit arbeiten, wie bei " +
+                    "Fahrern in einer Schicht. Nur einer: ein Zeitfenster gehört genau " +
+                    "einer Person, wie bei Fahrstunden.",
+  kArten: "Terminarten",
+  kArtenHinweis: "Was in diesem Kreis immer wieder vorkommt. Beim Anlegen eines " +
+                 "Termins genügt dann ein Tipp. Etwas anderes eintragen geht trotzdem.",
+  kArtName: "Bezeichnung",
+  kArtNameBsp: "Fahrstunde, Theorie, Schicht",
+  kArtDauer: "Dauer in Minuten",
+  kArtHinzu: "Hinzufügen",
+  kArtKeine: "Noch keine Terminart angelegt.",
+  kZeiten: "Arbeitszeiten",
+  kZeitenHinweis: "Wann in diesem Kreis überhaupt gearbeitet wird. Der Plan zeigt nur " +
+                  "diesen Ausschnitt, und bei „Nur einer“ entstehen daraus die Zeitfenster.",
+  kZeitHinzu: "Zeit hinzufügen",
+  kZeitKeine: "Keine Arbeitszeiten festgelegt, der Plan zeigt den ganzen Tag.",
+  kSpeichern: "Einstellungen speichern",
+  kGespeichert: "Gespeichert.",
+  kNurVerwalter: "Das darf nur ein Verwalter ändern.",
+  kDauerFehlt: "Bezeichnung und Dauer eintragen.",
+  kZeitFehlt: "Wähle Wochentage und Uhrzeiten.",
+
+  // ---- Zeitfenster ----
+  slBelegt: "Diese Zeit ist schon vergeben. Nimm ein anderes Fenster.",
+  slFrei: "{n} frei",
+  slAlleWeg: "Alle Fenster vergeben.",
+  slNimm: "Nehmen",
+  slDein: "Deins",
+
+  // ---- Name ----
+  nmTitel: "Wie heißt du?",
+  nmUnter: "Der Name steht in deinen Kreisen. Deine E-Mail-Adresse sehen die " +
+           "anderen Mitglieder nicht.",
+  nmFeld: "Name",
+  nmBsp: "Vorname Nachname",
+  nmWeiter: "Weiter",
+  nmFehlt: "Trag bitte einen Namen ein.",
+  nmAendern: "Namen ändern",
+
   // Marke
   spruch: "Ordnung für alles, was gleichzeitig läuft.",
   anmelden: "Mit Google anmelden",
@@ -285,6 +342,57 @@ ar: {
 
   datLang: "{wt}، {tag} {monat}",
   datKurz: "{wt}، {tag}/{monat}",
+
+
+  planNiemand: "لا أحد مسجَّل اليوم.",
+  planBelegt: "مشغول",
+  planIch: "أنا",
+  planGanzerTag: "بدون وقت",
+  planJetzt: "الآن",
+  planFrei: "متاح",
+  planBuchen: "حجز هذا الوقت",
+  planVergeben: "محجوز",
+  planEngerZeigen: "أضيق",
+  planWeiterZeigen: "أوسع",
+
+  kEinstellungen: "الإعدادات",
+  kBelegung: "كيف يُوزَّع الوقت",
+  kParallel: "في الوقت نفسه",
+  kExklusiv: "شخص واحد فقط",
+  kBelegungHinweis: "في الوقت نفسه: يمكن لعدة أشخاص العمل في الوقت ذاته، مثل السائقين " +
+                    "في وردية. شخص واحد فقط: الفترة الزمنية تخص شخصاً واحداً، مثل دروس القيادة.",
+  kArten: "أنواع المواعيد",
+  kArtenHinweis: "ما يتكرر في هذه الدائرة. عندها يكفي ضغطة واحدة عند إنشاء موعد، " +
+                 "ويبقى بإمكانك كتابة شيء آخر.",
+  kArtName: "التسمية",
+  kArtNameBsp: "درس قيادة، نظري، وردية",
+  kArtDauer: "المدة بالدقائق",
+  kArtHinzu: "إضافة",
+  kArtKeine: "لا يوجد نوع مواعيد بعد.",
+  kZeiten: "أوقات العمل",
+  kZeitenHinweis: "متى يُعمل في هذه الدائرة أصلاً. الخطة تعرض هذا النطاق فقط، " +
+                  "وفي وضع «شخص واحد فقط» تنشأ منه الفترات الزمنية.",
+  kZeitHinzu: "إضافة وقت",
+  kZeitKeine: "لم تُحدَّد أوقات عمل، والخطة تعرض اليوم كاملاً.",
+  kSpeichern: "حفظ الإعدادات",
+  kGespeichert: "تم الحفظ.",
+  kNurVerwalter: "المشرف وحده يستطيع تغيير هذا.",
+  kDauerFehlt: "أدخل التسمية والمدة.",
+  kZeitFehlt: "اختر أيام الأسبوع والأوقات.",
+
+  slBelegt: "هذا الوقت محجوز بالفعل. اختر فترة أخرى.",
+  slFrei: "{n} متاحة",
+  slAlleWeg: "كل الفترات محجوزة.",
+  slNimm: "حجز",
+  slDein: "لك",
+
+  nmTitel: "ما اسمك؟",
+  nmUnter: "الاسم يظهر في دوائرك. أما بريدك الإلكتروني فلا يراه بقية الأعضاء.",
+  nmFeld: "الاسم",
+  nmBsp: "الاسم الأول واسم العائلة",
+  nmWeiter: "متابعة",
+  nmFehlt: "من فضلك أدخل اسماً.",
+  nmAendern: "تغيير الاسم",
 
   spruch: "تنظيم لكل ما يجري في وقت واحد.",
   anmelden: "تسجيل الدخول عبر Google",
