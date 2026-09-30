@@ -1,4 +1,15 @@
-// ===== Firebase-Zugangsdaten fuer das Projekt sawa-82a09 =====
+/* ===================================================================
+   ORBYX
+   organize your chaos
+
+   Hier steht die ganze Logik. Die Texte stehen in i18n.js,
+   das Aussehen in index.html.
+
+   Zwei Dinge musst du unten anpassen:
+     1. firebaseConfig  – aus der Firebase Console
+     2. BETREIBER       – die E-Mail-Adressen, die "Betrieb" sehen
+   =================================================================== */
+
 const firebaseConfig = {
   apiKey: "AIzaSyAFCT65NaUVuu1YYBkKZM693zX_fKM7-Io",
   authDomain: "sawa-82a09.firebaseapp.com",
@@ -7,9 +18,11 @@ const firebaseConfig = {
   messagingSenderId: "200029883618",
   appId: "1:200029883618:web:18059e0fa3127bf62f62bb"
 };
-// Wer das Admin-Dashboard sieht.
-const ADMIN_MAILS = ["rabea.jabban.mrj@gmail.com"];
-// ==============================================================
+
+// Wer den Betrieb-Bereich sieht. Dieselbe Liste muss in firestore.rules stehen.
+const BETREIBER = ["rabea.jabban.mrj@gmail.com"];
+
+/* =================================================================== */
 
 import { initializeApp }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -18,9 +31,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc,
-  getDoc, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp,
-  writeBatch
+  getDoc, getDocs, query, where, onSnapshot, serverTimestamp, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+import {
+  SPRACHEN, t, liste, setzeSprache, holeSprache, istRTL, spracheRaten
+} from "./i18n.js";
 
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -34,29 +50,98 @@ const el = (tag, klasse, text) => {
   return x;
 };
 
-const WOCHENTAGE = ["Montag","Dienstag","Mittwoch","Donnerstag",
-                    "Freitag","Samstag","Sonntag"];
-const KURZ   = ["Mo","Di","Mi","Do","Fr","Sa","So"];
-const MONATE = ["Januar","Februar","März","April","Mai","Juni","Juli",
-                "August","September","Oktober","November","Dezember"];
-// Dieselben zehn Farben wie im Icon.
-const FARBEN = ["#D4533B","#DB8121","#C9A227","#8CA524","#3F9E5E",
-                "#2E9E8F","#3480B0","#4C63C4","#8A54C0","#C24A8E"];
+// Dieselben zehn Farben wie im Logo. Hellmodus-Werte, weil sie
+// in der Datenbank landen und dort fest bleiben müssen.
+const FARBEN = ["#1B65C9","#219447","#D9A21B","#C0392B","#7A4FC4",
+                "#0F8E96","#D2691E","#C2417F","#4A6572","#5C8A1E"];
+
+/* ===================================================================
+   GEDÄCHTNIS IM BROWSER
+   =================================================================== */
+
+function merke(schluessel, wert) {
+  try { localStorage.setItem("orbyx." + schluessel, wert); } catch (e) {}
+}
+function gemerkt(schluessel) {
+  try { return localStorage.getItem("orbyx." + schluessel); } catch (e) { return null; }
+}
+
+/* ===================================================================
+   SPRACHE
+   Ein Durchlauf über alle Elemente mit data-i18n reicht, um die
+   ganze Oberfläche umzuschalten. Neue Texte brauchen nur das Attribut.
+   =================================================================== */
+
+function wendeSpracheAn(code) {
+  setzeSprache(code);
+  merke("sprache", code);
+
+  document.documentElement.lang = code;
+  document.documentElement.dir  = istRTL() ? "rtl" : "ltr";
+
+  document.querySelectorAll("[data-i18n]").forEach((x) => {
+    x.textContent = t(x.dataset.i18n);
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach((x) => {
+    x.placeholder = t(x.dataset.i18nPh);
+  });
+  document.querySelectorAll("[data-i18n-al]").forEach((x) => {
+    x.setAttribute("aria-label", t(x.dataset.i18nAl));
+  });
+
+  // Im Arabischen zeigen die Blätter-Pfeile andersherum: dort bedeutet
+  // ein Pfeil nach rechts "zurück", weil man von rechts nach links liest.
+  $("zurueck").textContent = istRTL() ? "›" : "‹";
+  $("vor").textContent     = istRTL() ? "‹" : "›";
+
+  baueSprachwahl();
+  baueTageWahl();
+  baueDauerWahl();
+  setzeTyp(typ);
+  setzeWdh(wiederholung);
+
+  if (nutzer) {
+    zeichne();
+    if ($("dlgKreise").open) zeigeKreise();
+    if ($("dlgPost").open)   zeigePost();
+    if ($("dlgMich").open)   zeigeMeineZahlen();
+  }
+}
+
+function baueSprachwahl() {
+  ["sprachwahl", "sprachwahl2"].forEach((id) => {
+    const box = $(id);
+    if (!box) return;
+    box.innerHTML = "";
+    Object.entries(SPRACHEN).forEach(([code, s]) => {
+      const b = el("button", holeSprache() === code ? "an" : "", s.eigen);
+      b.type = "button";
+      b.lang = code;
+      b.addEventListener("click", () => {
+        wendeSpracheAn(code);
+        if (nutzer) {
+          updateDoc(doc(db, "users", nutzer.uid), { sprache: code }).catch(() => {});
+        }
+      });
+      box.appendChild(b);
+    });
+  });
+}
 
 /* ===================================================================
    DATUM
-   Alles ist Text in der Form JJJJ-MM-TT. toISOString() waere falsch,
+   Alles ist Text in der Form JJJJ-MM-TT. toISOString() wäre falsch,
    das rechnet nach UTC um und verschiebt abends den Tag.
    =================================================================== */
 
 function alsText(d) {
   const m = String(d.getMonth() + 1).padStart(2, "0");
-  const t = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${m}-${t}`;
+  const t2 = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${t2}`;
 }
 function ausText(s) {
-  const [j, m, t] = s.split("-").map(Number);
-  return new Date(j, m - 1, t);
+  const [j, m, t2] = s.split("-").map(Number);
+  return new Date(j, m - 1, t2);
 }
 function plus(text, tage) {
   const d = ausText(text);
@@ -66,13 +151,40 @@ function plus(text, tage) {
 function tageBis(ziel, von) {
   return Math.round((ausText(ziel) - ausText(von)) / 86400000);
 }
-// 0 = Montag ... 6 = Sonntag (JavaScript zaehlt ab Sonntag)
+// 0 = Montag ... 6 = Sonntag (JavaScript zählt ab Sonntag)
 function wochentag(text) {
   return (ausText(text).getDay() + 6) % 7;
 }
+/* Zahlen und Datumsstücke bekommen eine unsichtbare Klammer um sich.
+   Ohne die würde "27.9." im arabischen Satz als ".27.9" erscheinen,
+   weil der Punkt am Ende sonst an die falsche Seite rutscht. */
+function zahl(s) { return "⁦" + s + "⁩"; }
+
 function kurzDatum(text) {
   const d = ausText(text);
-  return `${KURZ[wochentag(text)]}, ${d.getDate()}.${d.getMonth() + 1}.`;
+  return t("datKurz", {
+    wt:    liste("kurzTage")[wochentag(text)],
+    tag:   zahl(String(d.getDate())),
+    monat: zahl(String(d.getMonth() + 1))
+  });
+}
+function langDatum(text) {
+  const d = ausText(text);
+  return t("datLang", {
+    wt:    liste("wochentage")[wochentag(text)],
+    tag:   zahl(String(d.getDate())),
+    monat: liste("monate")[d.getMonth()]
+  });
+}
+/* Für die Kopfzeile: kurzer Wochentag, damit die Zeile auf einem
+   schmalen Handy nicht umbricht. */
+function tagTitel(text) {
+  const d = ausText(text);
+  return t("datLang", {
+    wt:    liste("kurzTage")[wochentag(text)],
+    tag:   zahl(String(d.getDate())),
+    monat: liste("monate")[d.getMonth()]
+  });
 }
 function heute() { return alsText(new Date()); }
 function montagVon(text) { return plus(text, -wochentag(text)); }
@@ -89,7 +201,7 @@ function ausMinuten(min) {
 
 /* ===================================================================
    FEIERTAGE NRW
-   Sechs der elf haengen am Ostersonntag, der jedes Jahr woanders liegt.
+   Sechs der elf hängen am Ostersonntag, der jedes Jahr woanders liegt.
    Osterformel nach Meeus/Jones/Butcher.
    =================================================================== */
 
@@ -127,14 +239,47 @@ function feiertageNRW(jahr) {
   };
   return feiertagCache[jahr];
 }
-function feiertagName(t) {
-  return feiertageNRW(Number(t.slice(0, 4)))[t] || null;
+
+/* Namen der Feste in anderen Sprachen. Eine neue Sprache braucht
+   hier nur einen weiteren Block, sonst bleibt der deutsche Name. */
+const FESTE = {
+  ar: {
+    "Neujahr": "رأس السنة",
+    "Karfreitag": "الجمعة العظيمة",
+    "Ostermontag": "اثنين الفصح",
+    "Tag der Arbeit": "عيد العمال",
+    "Christi Himmelfahrt": "خميس الصعود",
+    "Pfingstmontag": "اثنين العنصرة",
+    "Fronleichnam": "عيد الجسد",
+    "Tag der Deutschen Einheit": "يوم الوحدة الألمانية",
+    "Allerheiligen": "عيد جميع القديسين",
+    "1. Weihnachtstag": "عيد الميلاد",
+    "2. Weihnachtstag": "ثاني أيام الميلاد",
+    "Sommerferien": "العطلة الصيفية",
+    "Herbstferien": "عطلة الخريف",
+    "Weihnachtsferien": "عطلة الميلاد",
+    "Osterferien": "عطلة الفصح",
+    "Pfingstferien": "عطلة العنصرة"
+  }
+};
+function festName(deutsch) {
+  if (!deutsch) return deutsch;
+  const tabelle = FESTE[holeSprache()];
+  return (tabelle && tabelle[deutsch]) || deutsch;
+}
+
+function feiertagName(tag) {
+  const roh = feiertageNRW(Number(tag.slice(0, 4)))[tag];
+  return roh ? festName(roh) : null;
+}
+function istFeiertag(tag) {
+  return !!feiertageNRW(Number(tag.slice(0, 4)))[tag];
 }
 
 /* ===================================================================
    SCHULFERIEN NRW
    Quelle: Ferienordnung des Schulministeriums NRW, beide Tage inklusive.
-   Wenn die Termine bis 2033 veroeffentlicht sind, hier ergaenzen.
+   Wenn neue Jahre veröffentlicht sind, hier ergänzen.
    =================================================================== */
 
 const FERIEN_NRW = [
@@ -153,13 +298,18 @@ const FERIEN_NRW = [
   ["2029-03-26","2029-04-07","Osterferien"],
   ["2029-05-22","2029-05-22","Pfingstferien"]
 ];
-function ferienName(t) {
-  for (const [von, bis, name] of FERIEN_NRW) if (t >= von && t <= bis) return name;
+function ferienRoh(tag) {
+  for (const [von, bis, name] of FERIEN_NRW) if (tag >= von && tag <= bis) return name;
   return null;
+}
+function ferienName(tag) {
+  const r = ferienRoh(tag);
+  return r ? festName(r) : null;
 }
 
 /* ===================================================================
    SERIEN
+   Eine Serie ist EIN Dokument mit einer Regel, nicht hundert Kopien.
    =================================================================== */
 
 function istSerie(e) { return e.wiederholung === "serie" && e.serie; }
@@ -171,8 +321,8 @@ function serieAnTag(e, tag) {
   if (s.bis && tag > s.bis) return false;
   if (!Array.isArray(s.wochentage) || !s.wochentage.includes(wochentag(tag))) return false;
   if (Array.isArray(s.ausnahmen) && s.ausnahmen.includes(tag)) return false;
-  if (s.ohneFeiertage && feiertagName(tag)) return false;
-  if (s.ohneFerien && ferienName(tag)) return false;
+  if (s.ohneFeiertage && istFeiertag(tag)) return false;
+  if (s.ohneFerien && ferienRoh(tag)) return false;
   return true;
 }
 function laeuftAnTag(e, tag) {
@@ -188,28 +338,79 @@ function erledigtAm(e, tag) {
    ZUSTAND
    =================================================================== */
 
-let nutzer     = null;
-let ansicht    = "tag";
-let filter     = "alles";       // alles | termin | task
-let anker      = heute();       // Tag, Woche oder Monat, je nach Ansicht
-let gewaehlt   = heute();       // im Monat angeklickter Tag
-let nachrichten = [];
-let offeneEinladungen = {};     // kreisId -> [einladungen]
-let stopPost   = null;
+let nutzer  = null;
+let profil  = {};               // mein eigenes Profil aus der Datenbank
+let ansicht = "tag";
+let filter  = "alles";          // alles | termin | task
+let anker   = heute();
+let gewaehlt = heute();
 
-let meineEintraege = [];        // alles, was ich sehen darf
+let meineEintraege = [];
 let meineKreise    = [];
 let alleNutzer     = {};        // uid -> {name, email, photoURL}
+let nachrichten    = [];
+let offeneEinladungen = {};     // kreisId -> [einladungen]
 
-let stopKreise = null;
+let eigene = [], geteilte = [];
+let stopEigene = null, stopGeteilte = null, stopKreise = null, stopPost = null;
 
 let bearbeiteId = null, bearbeiteTag = null;
 let typ = "termin", wiederholung = "einmal";
-let gewaehlteTage = [], gewaehlteKreise = [];
-let neueFarbe = FARBEN[0];
+let gewaehlteTage = [], gewaehlteKreise = [], gewaehltePersonen = [];
+let neueFarbe = FARBEN[0], neueArt = "kreis";
 let einladenKreis = null;
-
+let schreibenAnUid = null;
 let sucheAn = false;
+let nachgeruestet = false;
+
+/* ===================================================================
+   KREISE: WER SIEHT WEN
+   ------------------------------------------------------------------
+   Kreis  – alle sehen die belegten Zeiten aller. Familie, Team.
+   Stern  – nur der Verwalter sieht alle. Die Mitglieder sehen nur ihn,
+            nicht einander. Fahrschüler, Kunden, Fahrer.
+   =================================================================== */
+
+function istStern(k) { return (k.art || "kreis") === "stern"; }
+function binVerwalter(k) { return (k.verwalter || []).includes(nutzer.uid); }
+
+/* Wer darf durch diesen Kreis sehen, dass ICH belegt bin */
+function siehtMichDurch(k) {
+  const mitglieder = k.mitglieder || [];
+  if (!istStern(k)) return mitglieder;
+  return binVerwalter(k) ? mitglieder : (k.verwalter || []);
+}
+
+/* Wen darf ich durch diesen Kreis sehen */
+function icheSeheDurch(k) {
+  const mitglieder = k.mitglieder || [];
+  if (!istStern(k)) return mitglieder;
+  return binVerwalter(k) ? mitglieder : (k.verwalter || []);
+}
+
+/* Alle Personen, deren Zeiten ich sehen darf */
+function sichtbarePersonen() {
+  const s = new Set();
+  meineKreise.forEach((k) => icheSeheDurch(k).forEach((u) => s.add(u)));
+  s.delete(nutzer.uid);
+  return [...s];
+}
+
+/* Wer darf den Eintrag MIT Inhalt sehen */
+function sichtbarFuerListe(kreisIds, personen) {
+  const s = new Set([nutzer.uid]);
+  meineKreise.filter((k) => kreisIds.includes(k.id))
+             .forEach((k) => siehtMichDurch(k).forEach((u) => s.add(u)));
+  (personen || []).forEach((u) => s.add(u));
+  return [...s];
+}
+
+/* Wer darf sehen, DASS die Zeit belegt ist – ohne Titel und Notiz */
+function belegtFuerListe() {
+  const s = new Set([nutzer.uid]);
+  meineKreise.forEach((k) => siehtMichDurch(k).forEach((u) => s.add(u)));
+  return [...s];
+}
 
 /* ===================================================================
    ANMELDUNG
@@ -219,7 +420,7 @@ $("loginBtn").addEventListener("click", async () => {
   $("loginFehler").textContent = "";
   try { await signInWithPopup(auth, new GoogleAuthProvider()); }
   catch (e) {
-    $("loginFehler").textContent = "Anmeldung fehlgeschlagen: " + e.code;
+    $("loginFehler").textContent = t("anmeldenFehl", { code: e.code });
     console.error(e);
   }
 });
@@ -232,16 +433,45 @@ onAuthStateChanged(auth, async (user) => {
   nachgeruestet = false;
 
   if (!user) {
-    nutzer = null;
+    nutzer = null; profil = {};
     $("loginView").classList.remove("versteckt");
     $("appView").classList.add("versteckt");
     return;
   }
 
   nutzer = user;
-  $("photo").src = user.photoURL || "";
-  $("michName").textContent = user.displayName || "Mein Konto";
+
+  // Gesperrte Konten kommen nicht rein.
+  profil = await ladeProfil();
+  if (profil.aktiv === false) {
+    await signOut(auth);
+    $("loginFehler").textContent = t("gesperrt");
+    return;
+  }
+
+  // Sprache aus dem Profil hat Vorrang vor dem Browser.
+  if (profil.sprache && profil.sprache !== holeSprache()) {
+    wendeSpracheAn(profil.sprache);
+  }
+
+  // Ohne Profilbild von Google zeigt der Knopf den ersten Buchstaben,
+  // sonst hinge dort das kaputte Bildsymbol des Browsers.
+  const bild = $("photo");
+  if (user.photoURL) {
+    bild.src = user.photoURL;
+    bild.classList.remove("versteckt");
+    $("michBtn").dataset.kuerzel = "";
+  } else {
+    bild.removeAttribute("src");
+    bild.classList.add("versteckt");
+    $("michBtn").dataset.kuerzel =
+      (user.displayName || user.email || "?").trim().slice(0, 1).toUpperCase();
+  }
+
+  $("michName").textContent = user.displayName || t("koTitel");
   $("michMail").textContent = user.email || "";
+  $("betriebBtn").classList.toggle("versteckt", !istBetreiber());
+
   $("loginView").classList.add("versteckt");
   $("appView").classList.remove("versteckt");
 
@@ -254,12 +484,27 @@ onAuthStateChanged(auth, async (user) => {
   zeichne();
 });
 
+function istBetreiber() {
+  return BETREIBER.includes((nutzer?.email || "").toLowerCase());
+}
+function darfKreiseAnlegen() {
+  return profil.darfKreiseAnlegen !== false;
+}
+
+async function ladeProfil() {
+  try {
+    const d = await getDoc(doc(db, "users", nutzer.uid));
+    return d.exists() ? d.data() : {};
+  } catch (e) { console.warn("Profil lesen:", e.code); return {}; }
+}
+
 async function profilSichern() {
   try {
     await setDoc(doc(db, "users", nutzer.uid), {
       name:     nutzer.displayName || "",
       email:    (nutzer.email || "").toLowerCase(),
       photoURL: nutzer.photoURL || "",
+      sprache:  holeSprache(),
       zuletzt:  serverTimestamp()
     }, { merge: true });
   } catch (e) { console.error("Profil:", e); }
@@ -268,7 +513,7 @@ async function profilSichern() {
 /* ===================================================================
    EINLADUNGEN
    Beim Anmelden schaut die App nach, ob jemand mich eingeladen hat,
-   und traegt mich in den Kreis ein.
+   und trägt mich in den Kreis ein.
    =================================================================== */
 
 async function einladungenAnnehmen() {
@@ -289,19 +534,30 @@ async function einladungenAnnehmen() {
 
         const daten = k.data();
         const mitglieder = daten.mitglieder || [];
+
         if (!mitglieder.includes(nutzer.uid)) {
-          const info = { ...(daten.info || {}) };
-          info[nutzer.uid] = {
-            name:     nutzer.displayName || "",
-            email:    mail,
-            photoURL: nutzer.photoURL || ""
-          };
-          const neu = { mitglieder: [...mitglieder, nutzer.uid], info };
-          // Wer als Verwalter eingeladen wurde, wird gleich einer.
-          if (ein.alsVerwalter) {
+          const neu = { mitglieder: [...mitglieder, nutzer.uid] };
+          const alsVerwalter = !!ein.alsVerwalter;
+          if (alsVerwalter) {
             neu.verwalter = [...(daten.verwalter || []), nutzer.uid];
           }
+
+          // Im Stern steht der Name der Mitglieder NICHT im Kreis-Dokument,
+          // sonst könnten sich die Mitglieder gegenseitig auslesen.
+          const sternMitglied = (daten.art || "kreis") === "stern" && !alsVerwalter;
+          if (!sternMitglied) {
+            const info = { ...(daten.info || {}) };
+            info[nutzer.uid] = meinSteckbrief();
+            neu.info = info;
+          }
+
           await updateDoc(kref, neu);
+
+          if (sternMitglied) {
+            await setDoc(doc(db, "kreisinfo", ein.kreisId + "_" + nutzer.uid), {
+              kreisId: ein.kreisId, uid: nutzer.uid, ...meinSteckbrief()
+            }).catch((e) => console.warn("kreisinfo:", e.code));
+          }
         }
         await deleteDoc(d.ref);
       } catch (e) {
@@ -309,6 +565,14 @@ async function einladungenAnnehmen() {
       }
     }
   } catch (e) { console.error("Einladungen:", e); }
+}
+
+function meinSteckbrief() {
+  return {
+    name:     nutzer.displayName || "",
+    email:    (nutzer.email || "").toLowerCase(),
+    photoURL: nutzer.photoURL || ""
+  };
 }
 
 /* ===================================================================
@@ -319,27 +583,50 @@ function starteKreise() {
   stopKreise = onSnapshot(
     query(collection(db, "kreise"),
           where("mitglieder", "array-contains", nutzer.uid)),
-    (snap) => {
+    async (snap) => {
       meineKreise = snap.docs.map((x) => ({ id: x.id, ...x.data() }));
+
       alleNutzer = {};
       meineKreise.forEach((k) => Object.assign(alleNutzer, k.info || {}));
-      alleNutzer[nutzer.uid] = {
-        name: nutzer.displayName || "Ich",
-        email: (nutzer.email || "").toLowerCase(),
-        photoURL: nutzer.photoURL || ""
-      };
+      alleNutzer[nutzer.uid] = meinSteckbrief();
+      alleNutzer[nutzer.uid].name = nutzer.displayName || "Ich";
+
       zeichne();
+      await ladeKreisinfo();
       ladeOffeneEinladungen();
+      sichtbarkeitNachziehen();
     },
     (e) => console.error("Kreise:", e)
   );
 }
 
-// Wer wurde eingeladen und hat sich noch nicht angemeldet
+/* Namen der Stern-Mitglieder. Die stehen in einer eigenen Sammlung,
+   und lesen darf sie nur der Verwalter des Kreises. */
+async function ladeKreisinfo() {
+  let neu = false;
+  for (const k of meineKreise) {
+    if (!istStern(k) || !binVerwalter(k)) continue;
+    try {
+      const snap = await getDocs(
+        query(collection(db, "kreisinfo"), where("kreisId", "==", k.id))
+      );
+      snap.docs.forEach((d) => {
+        const x = d.data();
+        if (x.uid && !alleNutzer[x.uid]) {
+          alleNutzer[x.uid] = { name: x.name, email: x.email, photoURL: x.photoURL };
+          neu = true;
+        }
+      });
+    } catch (e) { console.warn("kreisinfo", k.id, e.code); }
+  }
+  if (neu) { zeichne(); if ($("dlgKreise").open) zeigeKreise(); }
+}
+
+/* Wer wurde eingeladen und hat sich noch nicht angemeldet */
 async function ladeOffeneEinladungen() {
   offeneEinladungen = {};
   for (const k of meineKreise) {
-    if (!(k.verwalter || []).includes(nutzer.uid)) continue;
+    if (!binVerwalter(k)) continue;
     try {
       const snap = await getDocs(
         query(collection(db, "einladungen"), where("kreisId", "==", k.id))
@@ -348,6 +635,36 @@ async function ladeOffeneEinladungen() {
     } catch (e) { console.warn("Einladungen", k.id, e.code); }
   }
   if ($("dlgKreise").open) zeigeKreise();
+}
+
+/* Kommt jemand neu in einen Kreis, sieht er alte Einträge nicht,
+   weil in sichtbarFuer sein Name fehlt. Ändert sich die Besetzung,
+   werden die eigenen Einträge deshalb einmal nachgezogen. */
+async function sichtbarkeitNachziehen() {
+  if (!eigene.length) return;
+  const stand = meineKreise
+    .map((k) => k.id + ":" + (k.art || "kreis") + ":" + [...(k.mitglieder || [])].sort().join(","))
+    .sort().join("|");
+  if (gemerkt("besetzung") === stand) return;
+
+  const belegtListe = belegtFuerListe();
+  try {
+    let b = writeBatch(db), zahl = 0;
+    for (const e of eigene) {
+      const soll = sichtbarFuerListe(e.kreisIds || [], e.zugewiesen || []);
+      const ist  = e.sichtbarFuer || [];
+      const gleich = soll.length === ist.length && soll.every((u) => ist.includes(u));
+      if (!gleich) {
+        b.set(doc(db, "eintraege", e.id), { sichtbarFuer: soll }, { merge: true });
+        zahl++;
+      }
+      b.set(doc(db, "belegt", e.id), { sichtbarFuer: belegtListe }, { merge: true });
+      zahl++;
+      if (zahl >= 400) { await b.commit(); b = writeBatch(db); zahl = 0; }
+    }
+    if (zahl) await b.commit();
+    merke("besetzung", stand);
+  } catch (e) { console.warn("Sichtbarkeit:", e.code); }
 }
 
 /* ---------- Nachrichten ---------- */
@@ -371,11 +688,11 @@ function zeigeZaehler() {
   $("postZahl").classList.toggle("versteckt", neu === 0);
 }
 
-// Zwei Abfragen: meine eigenen Eintraege und die, die andere mit einem
-// meiner Kreise geteilt haben. Zwei statt einer, damit auch Eintraege
-// ohne das Feld sichtbarFuer erscheinen, etwa aus dem Import.
-let eigene = [], geteilte = [];
-let stopEigene = null, stopGeteilte = null;
+/* ---------- Einträge ----------
+   Zwei Abfragen: die eigenen und die, die andere mit mir teilen.
+   Zwei statt einer, damit auch Einträge ohne das Feld sichtbarFuer
+   erscheinen, etwa aus dem Import. Und mit getrennten Fehlerwegen,
+   damit ein Fehler in der zweiten nicht die ganze App leert.        */
 
 function starteEintraege() {
   const zusammenfuehren = () => {
@@ -385,29 +702,26 @@ function starteEintraege() {
     zeichne();
   };
 
-  // Abfrage 1: meine eigenen Eintraege. Die ist die wichtige.
-  // Geht sie schief, ist die App leer und sagt das auch.
   stopEigene = onSnapshot(
     query(collection(db, "eintraege"), where("ownerId", "==", nutzer.uid)),
     (snap) => {
       eigene = snap.docs.map((x) => ({ id: x.id, ...x.data() }));
       zusammenfuehren();
       nachruestenFallsNoetig();
+      sichtbarkeitNachziehen();
     },
     (e) => {
       console.error("EIGENE Einträge:", e.code, e.message);
-      $("buehne").innerHTML =
-        '<div class="leer"><div class="gross">!</div>' +
-        'Konnte nicht laden: ' + (e.code || e.message) +
-        '<br><br>Bei „permission-denied“ sind die Sicherheitsregeln noch nicht ' +
-        'veröffentlicht. Bei „failed-precondition“ fehlt ein Index, dann steht ' +
-        'in der Konsole ein Link zum Anlegen.</div>';
+      const b = $("buehne");
+      b.innerHTML = "";
+      const d = el("div", "leer");
+      d.appendChild(el("div", "gross", "!"));
+      d.appendChild(el("div", null, t("ladeFehler", { code: e.code || e.message })));
+      d.appendChild(el("div", "hinweis", t("ladeHinweis")));
+      b.appendChild(d);
     }
   );
 
-  // Abfrage 2: was andere mit meinen Kreisen geteilt haben.
-  // Solange es keine Kreise gibt, liefert die nichts. Ein Fehler hier
-  // darf den Rest deshalb nicht blockieren.
   stopGeteilte = onSnapshot(
     query(collection(db, "eintraege"),
           where("sichtbarFuer", "array-contains", nutzer.uid)),
@@ -424,17 +738,15 @@ function starteEintraege() {
   );
 }
 
-/* Eintraege aus dem Import kennen sichtbarFuer und den Schattenkalender
-   noch nicht. Beim ersten Start nach dem Umbau wird das einmal ergaenzt. */
-let nachgeruestet = false;
-
+/* Einträge aus dem Import kennen sichtbarFuer und den Schattenkalender
+   noch nicht. Beim ersten Start nach dem Umbau wird das einmal ergänzt. */
 async function nachruestenFallsNoetig() {
   if (nachgeruestet) return;
   const offen = eigene.filter((e) => !Array.isArray(e.sichtbarFuer));
   if (!offen.length) { nachgeruestet = true; return; }
   nachgeruestet = true;
 
-  console.log("Sawa: rüste " + offen.length + " Einträge nach");
+  console.log("Orbyx: rüste " + offen.length + " Einträge nach");
   try {
     for (const e of offen) {
       const b = writeBatch(db);
@@ -480,14 +792,6 @@ $("filter").addEventListener("click", (ev) => {
   zeichne();
 });
 
-// Auswahl merken, damit sie beim nächsten Öffnen noch steht
-function merke(schluessel, wert) {
-  try { localStorage.setItem("sawa." + schluessel, wert); } catch (e) {}
-}
-function gemerkt(schluessel) {
-  try { return localStorage.getItem("sawa." + schluessel); } catch (e) { return null; }
-}
-
 (function stelleWieder() {
   const a = gemerkt("ansicht");
   const f = gemerkt("filter");
@@ -502,6 +806,7 @@ function gemerkt(schluessel) {
 })();
 
 function schiebe(richtung) {
+  // Im Arabischen zeigen die Pfeile spiegelverkehrt, die Bedeutung bleibt.
   if (ansicht === "tag")        anker = plus(anker, richtung);
   else if (ansicht === "woche") anker = plus(anker, richtung * 7);
   else if (ansicht === "monat") {
@@ -509,7 +814,7 @@ function schiebe(richtung) {
     d.setDate(1); d.setMonth(d.getMonth() + richtung);
     anker = alsText(d);
   } else if (ansicht === "liste") anker = plus(anker, richtung * 30);
-  else return;   // Aufgabenansicht kennt kein Blättern
+  else return;
   zeichne();
 }
 $("zurueck").addEventListener("click", () => schiebe(-1));
@@ -526,9 +831,7 @@ function zeichne() {
   if (!nutzer) return;
   if (sucheAn) { sucheAusfuehren(); return; }
 
-  // In der Aufgabenansicht gibt es nichts zu blättern
   $("zeitleiste").classList.toggle("versteckt", ansicht === "aufgaben");
-  // und der Filter wäre dort sinnlos
   $("filter").classList.toggle("versteckt", ansicht === "aufgaben");
 
   const b = $("buehne");
@@ -541,92 +844,104 @@ function zeichne() {
   else                             { kopfListe(); maleListe(b); }
 }
 
-/* Der Filter greift über alle Ansichten */
 function passtZumFilter(e) {
   return filter === "alles" || e.typ === filter;
 }
 
+function marke(text, frei) {
+  return el("span", "tagMarke" + (frei ? " frei" : ""), text);
+}
+
 function kopfTag() {
-  const d = ausText(anker);
-  $("zeitTitel").textContent =
-    `${WOCHENTAGE[wochentag(anker)]}, ${d.getDate()}. ${MONATE[d.getMonth()]}`;
+  $("zeitTitel").textContent = tagTitel(anker);
   const u = $("zeitUnter");
   u.innerHTML = "";
-  if (anker === heute())      u.appendChild(marke("Heute"));
-  else if (anker < heute())   u.appendChild(marke("Vergangen"));
+  if (anker === heute())    u.appendChild(marke(t("heute")));
+  else if (anker < heute()) u.appendChild(marke(t("vergangen")));
   const f = feiertagName(anker);
   const s = ferienName(anker);
   if (f) u.appendChild(marke(f, true));
   if (s) u.appendChild(marke(s, true));
 }
-function marke(text, frei) {
-  const x = el("span", "tagMarke" + (frei ? " frei" : ""), text);
-  return x;
-}
 
 function kopfWoche() {
   const mo = montagVon(anker), so = plus(mo, 6);
   const a = ausText(mo), z = ausText(so);
-  $("zeitTitel").textContent =
-    `${a.getDate()}. ${MONATE[a.getMonth()].slice(0,3)} – ${z.getDate()}. ${MONATE[z.getMonth()].slice(0,3)}`;
-  $("zeitUnter").textContent = "Woche";
+  const M = liste("monate");
+  const el1 = el("span", "ltr",
+    `${a.getDate()}. ${M[a.getMonth()].slice(0,3)} – ${z.getDate()}. ${M[z.getMonth()].slice(0,3)}`);
+  $("zeitTitel").innerHTML = "";
+  $("zeitTitel").appendChild(el1);
+  $("zeitUnter").textContent = t("woche");
 }
 function kopfMonat() {
   const d = ausText(anker);
-  $("zeitTitel").textContent = `${MONATE[d.getMonth()]} ${d.getFullYear()}`;
+  $("zeitTitel").textContent = `${liste("monate")[d.getMonth()]} ${d.getFullYear()}`;
   $("zeitUnter").textContent = "";
 }
 function kopfListe() {
-  $("zeitTitel").textContent = "Was ansteht";
-  $("zeitUnter").textContent = "Die nächsten 30 Tage";
+  $("zeitTitel").textContent = t("wasAnsteht");
+  $("zeitUnter").textContent = t("naechste30");
 }
 
-/* ---------- Eintraege eines Tages ---------- */
+/* ---------- Einträge eines Tages ---------- */
 
 function anTag(tag) {
   return meineEintraege.filter((e) => laeuftAnTag(e, tag) && passtZumFilter(e));
 }
-function sortiert(liste) {
-  return [...liste].sort((a, b) => (a.start || "99").localeCompare(b.start || "99"));
+function sortiert(l) {
+  return [...l].sort((a, b) => (a.start || "99").localeCompare(b.start || "99"));
+}
+function trenner(text, warn) {
+  return el("div", "trenner" + (warn ? " warn" : ""), text);
+}
+function leerKasten(zeichen, text) {
+  const d = el("div", "leer");
+  d.appendChild(el("div", "gross", zeichen));
+  d.appendChild(document.createTextNode(text));
+  return d;
 }
 
 function maleTag(box, tag) {
-  const alles  = anTag(tag);
+  const alles   = anTag(tag);
   const termine = sortiert(alles.filter((e) => e.typ === "termin"));
   const tasks   = sortiert(alles.filter((e) => e.typ === "task"))
     .sort((a, b) => (a.frist || "9999").localeCompare(b.frist || "9999"));
 
-  // Offene Aufgaben aus der Vergangenheit, nur einmalige.
+  // Offene Aufgaben aus der Vergangenheit, nur einmalige, nur eigene.
   const offen = filter === "termin" ? [] : meineEintraege.filter((e) =>
     e.typ === "task" && !istSerie(e) && e.status === "offen" &&
     e.datum < tag && e.ownerId === nutzer.uid);
 
+  // Was mir jemand zugewiesen hat und worauf ich noch nicht geantwortet habe
+  const anfragen = alles.filter((e) =>
+    e.ownerId !== nutzer.uid &&
+    (e.zugewiesen || []).includes(nutzer.uid) &&
+    !((e.zusagen || {})[nutzer.uid]));
+
   if (!termine.length && !tasks.length && !offen.length) {
     const f = feiertagName(tag);
-    const d = el("div", "leer");
-    d.appendChild(el("div", "gross", "○"));
-    d.appendChild(document.createTextNode(
-      f ? f + " – nichts eingetragen." : "Nichts eingetragen für diesen Tag."));
-    box.appendChild(d);
+    box.appendChild(leerKasten("○",
+      f ? t("nichtsTagFeiertag", { name: f }) : t("nichtsTag")));
     return;
   }
 
+  if (anfragen.length) {
+    box.appendChild(trenner(t("aZugewiesen")));
+    anfragen.forEach((e) => box.appendChild(zeile(e, tag)));
+  }
   if (offen.length) {
-    box.appendChild(trenner("Noch offen von früher", true));
+    box.appendChild(trenner(t("aOffenFrueher"), true));
     sortiert(offen).forEach((e) => box.appendChild(zeile(e, e.datum, true)));
   }
   if (termine.length) {
-    box.appendChild(trenner("Termine"));
+    box.appendChild(trenner(t("aTermine")));
     termine.forEach((e) => box.appendChild(zeile(e, tag)));
   }
   if (tasks.length) {
-    box.appendChild(trenner("Aufgaben"));
+    box.appendChild(trenner(t("aAufgaben")));
     tasks.forEach((e) => box.appendChild(zeile(e, tag)));
   }
-}
-
-function trenner(text, warn) {
-  return el("div", "trenner" + (warn ? " warn" : ""), text);
 }
 
 /* ---------- Woche ---------- */
@@ -634,37 +949,41 @@ function trenner(text, warn) {
 function maleWoche(box) {
   const mo = montagVon(anker);
   const w = el("div", "woche");
+  const W = liste("wochentage");
 
   for (let i = 0; i < 7; i++) {
     const tag = plus(mo, i);
     const karte = el("div", "wochentag");
 
     const kopf = el("div", "kopf");
-    kopf.appendChild(el("span", null, WOCHENTAGE[i]));
-    kopf.appendChild(el("span", "num", kurzDatum(tag).split(", ")[1]));
+    kopf.appendChild(el("span", null, W[i]));
+    const d = ausText(tag);
+    kopf.appendChild(el("span", "num ltr", `${d.getDate()}.${d.getMonth() + 1}.`));
     const f = feiertagName(tag);
     if (f) kopf.appendChild(el("span", "tagMarke frei", f));
-    if (tag === heute()) kopf.appendChild(el("span", "heute", "Heute"));
+    if (tag === heute()) kopf.appendChild(el("span", "heute", t("heute")));
     karte.appendChild(kopf);
 
-    const liste = sortiert(anTag(tag));
+    const l = sortiert(anTag(tag));
     const zeilen = el("div", "zeilen");
-    if (!liste.length) {
-      zeilen.appendChild(el("div", "nix", "frei"));
+    if (!l.length) {
+      zeilen.appendChild(el("div", "nix", t("frei")));
     } else {
-      liste.forEach((e) => {
+      l.forEach((e) => {
         const r = el("div", "mini" + (erledigtAm(e, tag) ? " erledigt" : ""));
-        r.appendChild(el("span", "z", e.start || (e.typ === "task" ? "Aufg." : "")));
-        const t = el("span", null, e.titel);
-        r.appendChild(t);
+        r.appendChild(el("span", "z", e.start || "—"));
+        r.appendChild(el("span", null, e.titel));
         if (e.ownerId !== nutzer.uid) {
           const p = el("span", "kreisPunkt");
           p.style.background = farbeVon(e);
           r.appendChild(p);
         }
-        r.addEventListener("click", () => { anker = tag; ansicht = "tag";
+        r.addEventListener("click", () => {
+          anker = tag; ansicht = "tag";
           [...$("nav").children].forEach((x) => x.classList.toggle("an", x.dataset.v === "tag"));
-          zeichne(); });
+          merke("ansicht", "tag");
+          zeichne();
+        });
         zeilen.appendChild(r);
       });
     }
@@ -678,13 +997,12 @@ function maleWoche(box) {
 
 function maleMonat(box) {
   const d = ausText(anker); d.setDate(1);
-  const ersterImMonat = alsText(d);
-  const start = montagVon(ersterImMonat);
+  const start = montagVon(alsText(d));
   const monatNr = d.getMonth();
 
   const rahmen = el("div", "monat");
   const kopf = el("div", "monatKopf");
-  KURZ.forEach((k) => kopf.appendChild(el("div", null, k)));
+  liste("kurzTage").forEach((k) => kopf.appendChild(el("div", null, k)));
   rahmen.appendChild(kopf);
 
   const gitter = el("div", "monatGitter");
@@ -696,13 +1014,13 @@ function maleMonat(box) {
     if (!imMonat) z.classList.add("fremd");
     if (tag === heute()) z.classList.add("heute");
     if (tag === gewaehlt) z.classList.add("gewaehlt");
-    if (feiertagName(tag)) z.classList.add("feier");
+    if (istFeiertag(tag)) z.classList.add("feier");
 
-    z.appendChild(el("span", null, String(ausText(tag).getDate())));
+    z.appendChild(el("span", "ltr", String(ausText(tag).getDate())));
 
-    const liste = anTag(tag);
+    const l = anTag(tag);
     const punkte = el("div", "punkte");
-    liste.slice(0, 4).forEach((e) => {
+    l.slice(0, 4).forEach((e) => {
       const p = el("span", "punkt" + (e.typ === "task" ? " task" : ""));
       if (e.ownerId !== nutzer.uid) p.style.background = farbeVon(e);
       punkte.appendChild(p);
@@ -732,38 +1050,35 @@ function maleMonatTag() {
   const box = $("monatTag");
   if (!box) return;
   box.innerHTML = "";
-  const d = ausText(gewaehlt);
-  box.appendChild(trenner(
-    `${WOCHENTAGE[wochentag(gewaehlt)]}, ${d.getDate()}. ${MONATE[d.getMonth()]}`));
-  const liste = sortiert(anTag(gewaehlt));
-  if (!liste.length) {
-    box.appendChild(el("div", "leer", "Nichts eingetragen."));
+  box.appendChild(trenner(langDatum(gewaehlt)));
+  const l = sortiert(anTag(gewaehlt));
+  if (!l.length) {
+    box.appendChild(el("div", "leer", t("nichtsGeplant")));
     return;
   }
   const w = el("div");
   w.style.cssText = "display:flex;flex-direction:column;gap:8px";
-  liste.forEach((e) => w.appendChild(zeile(e, gewaehlt)));
+  l.forEach((e) => w.appendChild(zeile(e, gewaehlt)));
   box.appendChild(w);
 }
 
 /* ---------- Aufgaben ----------
-   Eigener Bereich, nur Aufgaben, nicht an einen Tag gebunden.
-   Sortiert nach Dringlichkeit statt nach Datum.                     */
+   Eigener Bereich, nach Dringlichkeit statt nach Datum sortiert. */
 
 function maleAufgaben(box) {
   const h = heute();
 
-  // Einmalige Aufgaben, alle offenen und die zuletzt erledigten
   const einmalig = meineEintraege.filter((e) => e.typ === "task" && !istSerie(e));
   const offen    = einmalig.filter((e) => e.status !== "erledigt");
   const fertig   = einmalig.filter((e) => e.status === "erledigt")
     .sort((a, b) => b.datum.localeCompare(a.datum)).slice(0, 15);
 
-  // Serien-Aufgaben, heute fällig
   const serien = meineEintraege.filter((e) =>
     e.typ === "task" && istSerie(e) && serieAnTag(e, h));
 
-  const dringend = (e) => e.frist || "9999-99-99";
+  const zugewiesen = meineEintraege.filter((e) =>
+    e.ownerId !== nutzer.uid && (e.zugewiesen || []).includes(nutzer.uid) &&
+    (e.zusagen || {})[nutzer.uid] !== "nein");
 
   const ueberfaellig = offen.filter((e) => e.frist && e.frist < h)
     .sort((a, b) => a.frist.localeCompare(b.frist));
@@ -775,30 +1090,28 @@ function maleAufgaben(box) {
   const ohneFrist = offen.filter((e) => !e.frist)
     .sort((a, b) => a.datum.localeCompare(b.datum));
 
-  if (!offen.length && !serien.length && !fertig.length) {
-    const x = el("div", "leer");
-    x.appendChild(el("div", "gross", "✓"));
-    x.appendChild(document.createTextNode("Keine offenen Aufgaben."));
-    box.appendChild(x);
+  if (!offen.length && !serien.length && !fertig.length && !zugewiesen.length) {
+    box.appendChild(leerKasten("✓", t("keineAufgaben")));
     return;
   }
 
-  const abschnitt = (titel, liste, warn) => {
-    if (!liste.length) return;
-    box.appendChild(trenner(titel, warn));
-    liste.forEach((e) => box.appendChild(zeile(e, e.datum, true)));
+  const abschnitt = (schluessel, l, warn) => {
+    if (!l.length) return;
+    box.appendChild(trenner(t(schluessel), warn));
+    l.forEach((e) => box.appendChild(zeile(e, e.datum, true)));
   };
 
-  abschnitt("Überfällig", ueberfaellig, true);
-  abschnitt("Heute fällig", heuteFaellig, true);
-  abschnitt("Diese Woche", bald);
+  abschnitt("aZugewiesen", zugewiesen);
+  abschnitt("aUeberfaellig", ueberfaellig, true);
+  abschnitt("aHeuteFaellig", heuteFaellig, true);
+  abschnitt("aDieseWoche", bald);
   if (serien.length) {
-    box.appendChild(trenner("Heute wiederkehrend"));
+    box.appendChild(trenner(t("aWiederkehrend")));
     serien.forEach((e) => box.appendChild(zeile(e, h)));
   }
-  abschnitt("Später", spaeter);
-  abschnitt("Ohne Frist", ohneFrist);
-  abschnitt("Zuletzt erledigt", fertig);
+  abschnitt("aSpaeter", spaeter);
+  abschnitt("aOhneFrist", ohneFrist);
+  abschnitt("aErledigt", fertig);
 }
 
 /* ---------- Liste ---------- */
@@ -807,23 +1120,16 @@ function maleListe(box) {
   const von = anker, bis = plus(anker, 30);
   let leer = true;
 
-  for (let t = von; t <= bis; t = plus(t, 1)) {
-    const liste = sortiert(anTag(t));
-    if (!liste.length) continue;
+  for (let tg = von; tg <= bis; tg = plus(tg, 1)) {
+    const l = sortiert(anTag(tg));
+    if (!l.length) continue;
     leer = false;
-    const d = ausText(t);
     box.appendChild(trenner(
-      `${KURZ[wochentag(t)]}, ${d.getDate()}. ${MONATE[d.getMonth()]}` +
-      (t === heute() ? " · heute" : "")));
-    liste.forEach((e) => box.appendChild(zeile(e, t)));
+      tagTitel(tg) + (tg === heute() ? " · " + t("heute") : "")));
+    l.forEach((e) => box.appendChild(zeile(e, tg)));
   }
 
-  if (leer) {
-    const x = el("div", "leer");
-    x.appendChild(el("div", "gross", "○"));
-    x.appendChild(document.createTextNode("In den nächsten 30 Tagen ist nichts eingetragen."));
-    box.appendChild(x);
-  }
+  if (leer) box.appendChild(leerKasten("○", t("nichts30")));
 }
 
 /* ===================================================================
@@ -834,45 +1140,104 @@ function farbeVon(e) {
   const k = meineKreise.find((k) => (e.kreisIds || []).includes(k.id));
   return k ? k.farbe : "var(--text3)";
 }
+function vorname(uid) {
+  const w = alleNutzer[uid];
+  if (!w) return t("nJemand");
+  return (w.name || w.email || "?").split(" ")[0];
+}
 
 function fristMarke(e, tag) {
   if (e.typ !== "task" || !e.frist) return null;
   const tage = tageBis(e.frist, heute());
   let text, klasse = "";
-  if (erledigtAm(e, tag)) text = "Frist war " + kurzDatum(e.frist);
-  else if (tage < 0)   { text = Math.abs(tage) + " Tage überfällig"; klasse = " spaet"; }
-  else if (tage === 0) { text = "Heute fällig";                      klasse = " jetzt"; }
-  else if (tage === 1) { text = "Morgen fällig";                     klasse = " bald"; }
-  else if (tage <= 3)  { text = "In " + tage + " Tagen fällig";      klasse = " bald"; }
-  else                 { text = "Frist " + kurzDatum(e.frist); }
+  if (erledigtAm(e, tag)) text = t("fristWar", { datum: kurzDatum(e.frist) });
+  else if (tage < 0)   { text = t("fristSpaet", { n: Math.abs(tage) }); klasse = " spaet"; }
+  else if (tage === 0) { text = t("fristHeute");                        klasse = " jetzt"; }
+  else if (tage === 1) { text = t("fristMorgen");                       klasse = " bald"; }
+  else if (tage <= 3)  { text = t("fristBald", { n: tage });            klasse = " bald"; }
+  else                 { text = t("fristDatum", { datum: kurzDatum(e.frist) }); }
   return el("span", "marke" + klasse, text);
 }
 
 async function hakenUmschalten(e, tag) {
   const ref = doc(db, "eintraege", e.id);
-  if (istSerie(e)) {
-    const liste = Array.isArray(e.erledigtAn) ? [...e.erledigtAn] : [];
-    const i = liste.indexOf(tag);
-    if (i >= 0) liste.splice(i, 1); else liste.push(tag);
-    await updateDoc(ref, { erledigtAn: liste });
-  } else {
-    await updateDoc(ref, { status: e.status === "erledigt" ? "offen" : "erledigt" });
+  try {
+    if (istSerie(e)) {
+      const l = Array.isArray(e.erledigtAn) ? [...e.erledigtAn] : [];
+      const i = l.indexOf(tag);
+      if (i >= 0) l.splice(i, 1); else l.push(tag);
+      await updateDoc(ref, { erledigtAn: l });
+    } else {
+      await updateDoc(ref, { status: e.status === "erledigt" ? "offen" : "erledigt" });
+    }
+  } catch (err) { console.error(err); }
+}
+
+/* Zusagen: der Zugewiesene antwortet, der Besitzer sieht den Stand. */
+async function antworte(e, wert) {
+  try {
+    await updateDoc(doc(db, "eintraege", e.id), {
+      ["zusagen." + nutzer.uid]: wert
+    });
+    await addDoc(collection(db, "nachrichten"), {
+      anUid:   e.ownerId,
+      vonUid:  nutzer.uid,
+      vonName: nutzer.displayName || nutzer.email || "",
+      art:     wert === "ja" ? "zusage" : "absage",
+      text:    e.titel,
+      eintragId: e.id,
+      gelesen: false,
+      erstelltAm: serverTimestamp()
+    });
+  } catch (err) {
+    console.error(err);
+    alert(t("eSpeichern", { code: err.code || err.message }));
   }
+}
+
+function zusageBlock(e) {
+  const meine = (e.zusagen || {})[nutzer.uid] || "";
+  const box = el("div", "zusage");
+
+  const ja = el("button", "ja" + (meine === "ja" ? " an" : ""), t("zZusagen"));
+  ja.type = "button";
+  ja.addEventListener("click", (ev) => { ev.stopPropagation(); antworte(e, "ja"); });
+
+  const nein = el("button", "nein" + (meine === "nein" ? " an" : ""), t("zAbsagen"));
+  nein.type = "button";
+  nein.addEventListener("click", (ev) => { ev.stopPropagation(); antworte(e, "nein"); });
+
+  box.appendChild(ja);
+  box.appendChild(nein);
+  return box;
+}
+
+function zusageStand(e) {
+  const wer = e.zugewiesen || [];
+  if (!wer.length) return null;
+  const z = e.zusagen || {};
+  const ja = wer.filter((u) => z[u] === "ja").length;
+  const offen = wer.filter((u) => !z[u]).length;
+  const text = offen === 0 && ja === wer.length
+    ? t("zAlleZu")
+    : t("zUebersicht", { zu: ja, alle: wer.length });
+  return el("span", "marke" + (offen ? " bald" : " gut"), text);
 }
 
 function zeile(e, tag, zeigeDatum) {
   const meins    = e.ownerId === nutzer.uid;
   const erledigt = erledigtAm(e, tag);
   const faellig  = e.typ === "task" && !erledigt && e.frist && e.frist < heute();
+  const mirZugewiesen = !meins && (e.zugewiesen || []).includes(nutzer.uid);
 
   const wrap = el("div", "eintrag" + (erledigt ? " erledigt" : "") + (faellig ? " faellig" : ""));
   const kreis = meineKreise.find((k) => (e.kreisIds || []).includes(k.id));
-  if (kreis) wrap.style.borderLeftColor = kreis.farbe;
+  if (kreis) wrap.style.borderInlineStartColor = kreis.farbe;
 
   if (e.typ === "task" && meins) {
     const h = el("button", "haken" + (erledigt ? " an" : ""), erledigt ? "✓" : "");
     h.type = "button";
-    h.setAttribute("aria-label", "Aufgabe abhaken");
+    h.setAttribute("aria-label", t("abhaken"));
     h.addEventListener("click", () => hakenUmschalten(e, tag));
     wrap.appendChild(h);
   } else {
@@ -888,7 +1253,7 @@ function zeile(e, tag, zeigeDatum) {
   titel.appendChild(el("span", null, e.titel));
   if (istSerie(e)) {
     const r = el("span", "serieRing", "↻");
-    r.title = "Serie";
+    r.title = t("serie");
     titel.appendChild(r);
   }
   if (kreis) {
@@ -901,10 +1266,7 @@ function zeile(e, tag, zeigeDatum) {
 
   const zusatz = [];
   if (zeigeDatum) zusatz.push(kurzDatum(e.datum));
-  if (!meins) {
-    const wer = alleNutzer[e.ownerId];
-    zusatz.push("von " + (wer ? wer.name.split(" ")[0] : "jemandem"));
-  }
+  if (!meins) zusatz.push(t("vonPerson", { name: vorname(e.ownerId) }));
   if (e.typ === "task" && e.start) zusatz.push(e.start);
   if (e.ort)   zusatz.push(e.ort);
   if (e.notiz) zusatz.push(e.notiz);
@@ -913,23 +1275,30 @@ function zeile(e, tag, zeigeDatum) {
   const m = fristMarke(e, tag);
   if (m) inhalt.appendChild(m);
 
-  if (meins) inhalt.addEventListener("click", () => oeffneEintrag(e, tag));
+  if (meins) {
+    const st = zusageStand(e);
+    if (st) inhalt.appendChild(st);
+    inhalt.addEventListener("click", () => oeffneEintrag(e, tag));
+  }
+  if (mirZugewiesen) inhalt.appendChild(zusageBlock(e));
+
   wrap.appendChild(inhalt);
 
   if (meins) {
     const weg = el("button", "weg", "×");
     weg.type = "button";
-    weg.setAttribute("aria-label", "Löschen");
+    weg.setAttribute("aria-label", t("loeschen"));
     weg.addEventListener("click", async () => {
       const frage = istSerie(e)
-        ? `Die ganze Serie „${e.titel}“ löschen?\n\nWenn nur dieser Tag ausfallen soll: ` +
-          `abbrechen, auf den Eintrag tippen und „Diesen Tag absagen“ wählen.`
-        : "Diesen Eintrag löschen?";
+        ? t("eSerieLoeschen", { titel: e.titel })
+        : t("eLoeschenFrage");
       if (!confirm(frage)) return;
-      const b = writeBatch(db);
-      b.delete(doc(db, "eintraege", e.id));
-      b.delete(doc(db, "belegt", e.id));
-      await b.commit();
+      try {
+        const b = writeBatch(db);
+        b.delete(doc(db, "eintraege", e.id));
+        b.delete(doc(db, "belegt", e.id));
+        await b.commit();
+      } catch (err) { alert(t("eSpeichern", { code: err.code || err.message })); }
     });
     wrap.appendChild(weg);
   }
@@ -947,7 +1316,8 @@ $("sucheBtn").addEventListener("click", () => {
   $("zeitleiste").classList.add("versteckt");
   $("sucheFeld").value = "";
   $("sucheFeld").focus();
-  $("buehne").innerHTML = '<div class="leer">Tippe mindestens zwei Zeichen.</div>';
+  $("buehne").innerHTML = "";
+  $("buehne").appendChild(el("div", "leer", t("tippe2")));
 });
 $("sucheZu").addEventListener("click", () => {
   sucheAn = false;
@@ -964,10 +1334,7 @@ function sucheAusfuehren() {
   const box  = $("buehne");
   box.innerHTML = "";
 
-  if (wort.length < 2) {
-    box.appendChild(el("div", "leer", "Tippe mindestens zwei Zeichen."));
-    return;
-  }
+  if (wort.length < 2) { box.appendChild(el("div", "leer", t("tippe2"))); return; }
 
   const treffer = meineEintraege.filter((e) => {
     const heu = e.suchtext ||
@@ -976,10 +1343,10 @@ function sucheAusfuehren() {
   }).sort((a, b) => b.datum.localeCompare(a.datum));
 
   if (!treffer.length) {
-    box.appendChild(el("div", "leer", `Nichts gefunden für „${wort}“.`));
+    box.appendChild(el("div", "leer", t("nichtsGefunden", { wort })));
     return;
   }
-  box.appendChild(trenner(treffer.length + (treffer.length === 1 ? " Treffer" : " Treffer")));
+  box.appendChild(trenner(t("aTreffer", { n: treffer.length })));
   treffer.forEach((e) => box.appendChild(zeile(e, e.datum, true)));
 }
 
@@ -993,7 +1360,7 @@ function setzeTyp(neu) {
   $("typTask").classList.toggle("an", neu === "task");
   $("endeFeld").classList.toggle("versteckt", neu !== "termin");
   $("fristFeld").classList.toggle("versteckt", neu !== "task");
-  $("lblStart").textContent = neu === "termin" ? "Von" : "Uhrzeit (optional)";
+  $("lblStart").textContent = neu === "termin" ? t("fVon") : t("fUhrzeitOpt");
   setzeLabelDatum();
 }
 function setzeWdh(neu) {
@@ -1004,25 +1371,28 @@ function setzeWdh(neu) {
   setzeLabelDatum();
 }
 function setzeLabelDatum() {
-  $("lblDatum").textContent = wiederholung === "serie" ? "Erster Tag"
-    : typ === "termin" ? "Datum" : "Geplant am";
+  $("lblDatum").textContent = wiederholung === "serie" ? t("fErsterTag")
+    : typ === "termin" ? t("fDatum") : t("fGeplantAm");
 }
 $("typTermin").addEventListener("click", () => setzeTyp("termin"));
 $("typTask").addEventListener("click", () => setzeTyp("task"));
 $("wdhEinmal").addEventListener("click", () => setzeWdh("einmal"));
 $("wdhSerie").addEventListener("click", () => setzeWdh("serie"));
 
-KURZ.forEach((name, i) => {
-  const b = el("button", "tagKnopf", name);
-  b.type = "button"; b.dataset.tag = i;
-  b.addEventListener("click", () => {
-    const k = gewaehlteTage.indexOf(i);
-    if (k >= 0) gewaehlteTage.splice(k, 1); else gewaehlteTage.push(i);
-    b.classList.toggle("an", k < 0);
+function baueTageWahl() {
+  const box = $("tageWahl");
+  box.innerHTML = "";
+  liste("kurzTage").forEach((name, i) => {
+    const b = el("button", "tagKnopf" + (gewaehlteTage.includes(i) ? " an" : ""), name);
+    b.type = "button"; b.dataset.tag = i;
+    b.addEventListener("click", () => {
+      const k = gewaehlteTage.indexOf(i);
+      if (k >= 0) gewaehlteTage.splice(k, 1); else gewaehlteTage.push(i);
+      b.classList.toggle("an", k < 0);
+    });
+    box.appendChild(b);
   });
-  $("tageWahl").appendChild(b);
-});
-
+}
 function zeigeTageWahl() {
   $("tageWahl").querySelectorAll(".tagKnopf").forEach((b) => {
     b.classList.toggle("an", gewaehlteTage.includes(Number(b.dataset.tag)));
@@ -1049,6 +1419,25 @@ function zeigeTeilenWahl() {
   });
 }
 
+function zeigeZuweisenWahl() {
+  const box = $("zuweisenWahl");
+  box.innerHTML = "";
+  const leute = sichtbarePersonen();
+  $("zuweisenBlock").classList.toggle("versteckt", !leute.length);
+  leute.forEach((uid) => {
+    const info = alleNutzer[uid] || {};
+    const b = el("button", "person" + (gewaehltePersonen.includes(uid) ? " an" : ""),
+                 info.name || info.email || t("kUnbekannt"));
+    b.type = "button";
+    b.addEventListener("click", () => {
+      const i = gewaehltePersonen.indexOf(uid);
+      if (i >= 0) gewaehltePersonen.splice(i, 1); else gewaehltePersonen.push(uid);
+      b.classList.toggle("an", i < 0);
+    });
+    box.appendChild(b);
+  });
+}
+
 function naechsteStunde() {
   const d = new Date();
   d.setMinutes(0, 0, 0); d.setHours(d.getHours() + 1);
@@ -1061,9 +1450,8 @@ function oeffneEintrag(e, tag) {
   $("formFehler").textContent = "";
   bearbeiteId  = e ? e.id : null;
   bearbeiteTag = tag || anker;
-  $("dlgTitel").textContent = e ? "Eintrag bearbeiten" : "Neuer Eintrag";
-  $("dlgUnter").textContent = e ? (istSerie(e) ? "Änderungen gelten für die ganze Serie." : "")
-                                : "Was steht an?";
+  $("dlgTitel").textContent = e ? t("fBearbeiten") : t("fNeu");
+  $("dlgUnter").textContent = e ? (istSerie(e) ? t("fSerieHinweis") : "") : t("fWasSteht");
 
   setzeTyp(e ? e.typ : "termin");
   setzeWdh(e && istSerie(e) ? "serie" : "einmal");
@@ -1085,12 +1473,14 @@ function oeffneEintrag(e, tag) {
   $("fFeiertage").checked = s ? !!s.ohneFeiertage : true;
   $("fFerien").checked    = s ? !!s.ohneFerien    : false;
 
-  gewaehlteKreise = e ? [...(e.kreisIds || [])] : [];
+  gewaehlteKreise   = e ? [...(e.kreisIds   || [])] : [];
+  gewaehltePersonen = e ? [...(e.zugewiesen || [])] : [];
   zeigeTeilenWahl();
+  zeigeZuweisenWahl();
 
   const zeigeAbsage = !!(e && istSerie(e));
   $("absagenBtn").classList.toggle("versteckt", !zeigeAbsage);
-  if (zeigeAbsage) $("absagenBtn").textContent = "Am " + kurzDatum(bearbeiteTag) + " absagen";
+  if (zeigeAbsage) $("absagenBtn").textContent = t("fTagAbsagen", { datum: kurzDatum(bearbeiteTag) });
 
   $("dlgEintrag").showModal();
 }
@@ -1101,40 +1491,26 @@ $("abbrechen").addEventListener("click", () => $("dlgEintrag").close());
 $("absagenBtn").addEventListener("click", async () => {
   const e = meineEintraege.find((x) => x.id === bearbeiteId);
   if (!e || !e.serie) return;
-  const liste = Array.isArray(e.serie.ausnahmen) ? [...e.serie.ausnahmen] : [];
-  if (!liste.includes(bearbeiteTag)) liste.push(bearbeiteTag);
+  const l = Array.isArray(e.serie.ausnahmen) ? [...e.serie.ausnahmen] : [];
+  if (!l.includes(bearbeiteTag)) l.push(bearbeiteTag);
   try {
     const b = writeBatch(db);
-    b.update(doc(db, "eintraege", e.id), { "serie.ausnahmen": liste });
+    b.update(doc(db, "eintraege", e.id), { "serie.ausnahmen": l });
     // set statt update: der Schatten fehlt bei Einträgen aus dem Import
     b.set(doc(db, "belegt", e.id), {
       ownerId: nutzer.uid, typ: e.typ, datum: e.datum,
       start: e.start || "", ende: e.ende || "",
       wiederholung: "serie",
-      serie: { ...e.serie, ausnahmen: liste },
+      serie: { ...e.serie, ausnahmen: l },
       sichtbarFuer: belegtFuerListe()
     }, { merge: true });
     await b.commit();
     $("dlgEintrag").close();
   } catch (err) {
-    $("formFehler").textContent = "Fehlgeschlagen: " + (err.code || err.message);
+    $("formFehler").textContent = t("eSpeichern", { code: err.code || err.message });
     console.error(err);
   }
 });
-
-// Wer darf den Eintrag mit Inhalt sehen
-function sichtbarFuerListe(kreisIds) {
-  const s = new Set([nutzer.uid]);
-  meineKreise.filter((k) => kreisIds.includes(k.id))
-             .forEach((k) => (k.mitglieder || []).forEach((u) => s.add(u)));
-  return [...s];
-}
-// Wer darf sehen, dass die Zeit belegt ist: alle aus allen meinen Kreisen
-function belegtFuerListe() {
-  const s = new Set([nutzer.uid]);
-  meineKreise.forEach((k) => (k.mitglieder || []).forEach((u) => s.add(u)));
-  return [...s];
-}
 
 $("formEintrag").addEventListener("submit", async (ev) => {
   ev.preventDefault();
@@ -1149,17 +1525,28 @@ $("formEintrag").addEventListener("submit", async (ev) => {
   const notiz = $("fNotiz").value.trim();
   const bis   = $("fBis").value;
 
-  if (!titel || !datum) { $("formFehler").textContent = "Titel und Datum sind nötig."; return; }
-  if (typ === "termin" && !start) { $("formFehler").textContent = "Ein Termin braucht eine Startzeit."; return; }
-  if (typ === "termin" && ende && ende <= start) { $("formFehler").textContent = "Das Ende muss nach dem Start liegen."; return; }
-  if (typ === "task" && frist && frist < datum) { $("formFehler").textContent = "Die Frist liegt vor dem geplanten Tag."; return; }
+  const fehler = (k) => { $("formFehler").textContent = t(k); };
+
+  if (!titel || !datum) return fehler("eTitelDatum");
+  if (typ === "termin" && !start) return fehler("eStartzeit");
+  if (typ === "termin" && ende && ende <= start) return fehler("eEnde");
+  if (typ === "task" && frist && frist < datum) return fehler("eFrist");
   if (wiederholung === "serie") {
-    if (!gewaehlteTage.length) { $("formFehler").textContent = "Wähle mindestens einen Wochentag."; return; }
-    if (!bis) { $("formFehler").textContent = "Eine Serie braucht ein Enddatum."; return; }
-    if (bis < datum) { $("formFehler").textContent = "Das Serienende liegt vor dem ersten Tag."; return; }
+    if (!gewaehlteTage.length) return fehler("eWochentag");
+    if (!bis) return fehler("eSerienende");
+    if (bis < datum) return fehler("eSerieVor");
   }
 
-  const kreisIds = [...gewaehlteKreise];
+  const kreisIds   = [...gewaehlteKreise];
+  const zugewiesen = [...gewaehltePersonen];
+
+  const alt = bearbeiteId ? meineEintraege.find((x) => x.id === bearbeiteId) : null;
+
+  // Zusagen von Leuten, die noch zugewiesen sind, bleiben erhalten.
+  const zusagen = {};
+  if (alt && alt.zusagen) {
+    zugewiesen.forEach((u) => { if (alt.zusagen[u]) zusagen[u] = alt.zusagen[u]; });
+  }
 
   const daten = {
     ownerId: nutzer.uid,
@@ -1170,7 +1557,9 @@ $("formEintrag").addEventListener("submit", async (ev) => {
     ort, notiz,
     wiederholung,
     kreisIds,
-    sichtbarFuer: sichtbarFuerListe(kreisIds),
+    zugewiesen,
+    zusagen,
+    sichtbarFuer: sichtbarFuerListe(kreisIds, zugewiesen),
     suchtext: [titel, notiz, ort].join(" ").toLowerCase().trim()
   };
 
@@ -1184,7 +1573,6 @@ $("formEintrag").addEventListener("submit", async (ev) => {
   };
 
   if (wiederholung === "serie") {
-    const alt = bearbeiteId ? meineEintraege.find((x) => x.id === bearbeiteId) : null;
     const s = {
       bis,
       wochentage: [...gewaehlteTage].sort((a, b) => a - b),
@@ -1197,6 +1585,7 @@ $("formEintrag").addEventListener("submit", async (ev) => {
   }
 
   try {
+    let id = bearbeiteId;
     if (bearbeiteId) {
       const b = writeBatch(db);
       b.set(doc(db, "eintraege", bearbeiteId), daten, { merge: true });
@@ -1211,16 +1600,22 @@ $("formEintrag").addEventListener("submit", async (ev) => {
         daten.status = "";
       }
       const ref = await addDoc(collection(db, "eintraege"), daten);
+      id = ref.id;
       await setDoc(doc(db, "belegt", ref.id), schatten);
       if (kreisIds.length) meldeGeteilt(titel, kreisIds, ref.id);
     }
+
+    // Neu Zugewiesene bekommen Bescheid
+    const vorher = alt ? (alt.zugewiesen || []) : [];
+    const neuDazu = zugewiesen.filter((u) => !vorher.includes(u));
+    if (neuDazu.length) meldeZugewiesen(titel, neuDazu, id);
 
     $("dlgEintrag").close();
     if (wiederholung === "einmal" && datum !== anker && ansicht === "tag") {
       anker = datum; zeichne();
     }
   } catch (e) {
-    $("formFehler").textContent = "Speichern fehlgeschlagen: " + (e.code || e.message);
+    $("formFehler").textContent = t("eSpeichern", { code: e.code || e.message });
     console.error(e);
   }
 });
@@ -1233,7 +1628,7 @@ FARBEN.forEach((f, i) => {
   const b = el("button", "farbe" + (i === 0 ? " an" : ""));
   b.type = "button";
   b.style.background = f;
-  b.setAttribute("aria-label", "Farbe " + (i + 1));
+  b.setAttribute("aria-label", f);
   b.addEventListener("click", () => {
     neueFarbe = f;
     [...$("kFarben").children].forEach((x) => x.classList.toggle("an", x === b));
@@ -1241,22 +1636,36 @@ FARBEN.forEach((f, i) => {
   $("kFarben").appendChild(b);
 });
 
+function setzeArt(a) {
+  neueArt = a;
+  $("artKreis").classList.toggle("an", a === "kreis");
+  $("artStern").classList.toggle("an", a === "stern");
+}
+$("artKreis").addEventListener("click", () => setzeArt("kreis"));
+$("artStern").addEventListener("click", () => setzeArt("stern"));
+
 $("kreiseBtn").addEventListener("click", () => { zeigeKreise(); $("dlgKreise").showModal(); });
 $("kreiseZu").addEventListener("click", () => $("dlgKreise").close());
+$("kreiseZu2").addEventListener("click", () => $("dlgKreise").close());
 
 function zeigeKreise() {
+  // Wer keine Kreise anlegen darf, sieht das Formular gar nicht erst.
+  const darf = darfKreiseAnlegen();
+  $("neuerKreisBlock").classList.toggle("versteckt", !darf);
+  $("kreiseNurZu").classList.toggle("versteckt", darf);
+
   const box = $("kreisListe");
   box.innerHTML = "";
 
   if (!meineKreise.length) {
-    box.appendChild(el("div", "hinweis",
-      "Du bist noch in keinem Kreis. Leg unten einen an und lade Leute ein."));
+    box.appendChild(el("div", "hinweis", darf ? t("kKeine") : t("kDarfNicht")));
     return;
   }
 
   meineKreise.forEach((k) => {
-    const verwalter = (k.verwalter || []).includes(nutzer.uid);
+    const verwalter = binVerwalter(k);
     const ersteller = k.erstellerId === nutzer.uid;
+    const stern = istStern(k);
 
     const karte = el("div", "kreisKarte");
     const kopf = el("div", "kopf");
@@ -1265,14 +1674,15 @@ function zeigeKreise() {
     p.style.width = "14px"; p.style.height = "14px";
     kopf.appendChild(p);
     kopf.appendChild(el("b", null, k.name));
+    kopf.appendChild(el("span", "rolle", stern ? t("kArtStern") : t("kArtKreis")));
 
     if (verwalter) {
-      const b = el("button", "knopf rand", "Einladen");
+      const b = el("button", "knopf rand", t("kEinladen"));
       b.type = "button";
       b.style.cssText = "width:auto;padding:7px 14px;font-size:13px";
       b.addEventListener("click", () => {
         einladenKreis = k;
-        $("einladenUnter").textContent = "In den Kreis " + k.name;
+        $("einladenUnter").textContent = t("eiIn", { kreis: k.name });
         $("eMail").value = "";
         $("eVerwalter").checked = false;
         $("einladenFehler").textContent = "";
@@ -1283,8 +1693,11 @@ function zeigeKreise() {
     }
     karte.appendChild(kopf);
 
-    /* ---- Mitglieder ---- */
-    (k.mitglieder || []).forEach((uid) => {
+    /* ---- Mitglieder ----
+       Im Stern sieht ein normales Mitglied nur die Verwalter. */
+    const zeigeUids = stern && !verwalter ? (k.verwalter || []) : (k.mitglieder || []);
+
+    zeigeUids.forEach((uid) => {
       const info = (k.info || {})[uid] || alleNutzer[uid] || {};
       const z = el("div", "mitglied");
 
@@ -1297,31 +1710,28 @@ function zeigeKreise() {
       }
       z.appendChild(av);
 
-      const t = el("div");
-      t.style.flexGrow = "1";
-      t.appendChild(el("div", null,
-        (info.name || "Unbekannt") + (uid === nutzer.uid ? " (du)" : "")));
-      if (info.email) t.appendChild(el("div", "mail", info.email));
-      z.appendChild(t);
+      const txt = el("div");
+      txt.style.flexGrow = "1";
+      txt.appendChild(el("div", null,
+        (info.name || t("kUnbekannt")) + (uid === nutzer.uid ? " " + t("kDu") : "")));
+      if (info.email) txt.appendChild(el("div", "mail", info.email));
+      z.appendChild(txt);
 
-      if ((k.verwalter || []).includes(uid)) {
-        z.appendChild(el("span", "rolle", "Verwalter"));
-      }
+      if ((k.verwalter || []).includes(uid)) z.appendChild(el("span", "rolle", t("kVerwalter")));
 
-      // Nachricht schreiben
       if (uid !== nutzer.uid) {
-        const nb = el("button", "klein", "Nachricht");
+        const nb = el("button", "klein", t("kNachricht"));
         nb.type = "button";
         nb.addEventListener("click", () => oeffneSchreiben(uid, info.name || info.email));
         z.appendChild(nb);
       }
 
-      // Entfernen, nur Verwalter, nicht sich selbst, nicht den Ersteller
       if (verwalter && uid !== nutzer.uid && uid !== k.erstellerId) {
-        const wb = el("button", "klein gefahr", "Entfernen");
+        const wb = el("button", "klein gefahr", t("kEntfernen"));
         wb.type = "button";
         wb.addEventListener("click", async () => {
-          if (!confirm(`${info.name || "Diese Person"} aus „${k.name}“ entfernen?`)) return;
+          if (!confirm(t("kEntfernenFrage", {
+            name: info.name || t("kUnbekannt"), kreis: k.name }))) return;
           try {
             const info2 = { ...(k.info || {}) };
             delete info2[uid];
@@ -1330,9 +1740,8 @@ function zeigeKreise() {
               verwalter:  (k.verwalter  || []).filter((u) => u !== uid),
               info: info2
             });
-          } catch (e) {
-            alert("Fehlgeschlagen: " + (e.code || e.message));
-          }
+            await deleteDoc(doc(db, "kreisinfo", k.id + "_" + uid)).catch(() => {});
+          } catch (e) { alert(t("eSpeichern", { code: e.code || e.message })); }
         });
         z.appendChild(wb);
       }
@@ -1343,59 +1752,51 @@ function zeigeKreise() {
     /* ---- Offene Einladungen ---- */
     (offeneEinladungen[k.id] || []).forEach((ein) => {
       const z = el("div", "einladung");
-      const av = el("div", "avatar", "?");
-      z.appendChild(av);
-      const t = el("div");
-      t.style.flexGrow = "1";
-      t.appendChild(el("div", null, ein.email));
-      t.appendChild(el("div", "mail",
-        "Eingeladen" + (ein.alsVerwalter ? " als Verwalter" : "")));
-      z.appendChild(t);
-      z.appendChild(el("span", "warte", "wartet"));
+      z.appendChild(el("div", "avatar", "?"));
+      const txt = el("div");
+      txt.style.flexGrow = "1";
+      txt.appendChild(el("div", null, ein.email));
+      txt.appendChild(el("div", "mail",
+        ein.alsVerwalter ? t("kEingeladenVerw") : t("kEingeladen")));
+      z.appendChild(txt);
+      z.appendChild(el("span", "warte", t("kWartet")));
 
-      const wb = el("button", "klein gefahr", "Zurückziehen");
+      const wb = el("button", "klein gefahr", t("kZurueckziehen"));
       wb.type = "button";
       wb.addEventListener("click", async () => {
-        if (!confirm(`Einladung an ${ein.email} zurückziehen?`)) return;
+        if (!confirm(t("kZurueckFrage", { mail: ein.email }))) return;
         try {
           await deleteDoc(doc(db, "einladungen", ein.id));
           await ladeOffeneEinladungen();
-        } catch (e) {
-          alert("Fehlgeschlagen: " + (e.code || e.message));
-        }
+        } catch (e) { alert(t("eSpeichern", { code: e.code || e.message })); }
       });
       z.appendChild(wb);
       karte.appendChild(z);
     });
 
-    /* ---- Kreis verlassen oder löschen ---- */
+    /* ---- Verlassen oder löschen ---- */
     const fuss = el("div");
-    fuss.style.cssText = "display:flex;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--linie)";
+    fuss.style.cssText =
+      "display:flex;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--linie)";
 
     if (ersteller) {
-      const lb = el("button", "klein gefahr", "Kreis löschen");
+      const lb = el("button", "klein gefahr", t("kLoeschen"));
       lb.type = "button";
       lb.addEventListener("click", async () => {
-        if (!confirm(
-          `Den Kreis „${k.name}“ wirklich löschen?\n\n` +
-          `Die Termine bleiben erhalten, aber niemand sieht mehr die des anderen. ` +
-          `Das lässt sich nicht rückgängig machen.`)) return;
+        if (!confirm(t("kLoeschenFrage", { kreis: k.name }))) return;
         try {
-          // erst die offenen Einladungen weg, dann der Kreis
           for (const ein of (offeneEinladungen[k.id] || [])) {
             await deleteDoc(doc(db, "einladungen", ein.id)).catch(() => {});
           }
           await deleteDoc(doc(db, "kreise", k.id));
-        } catch (e) {
-          alert("Fehlgeschlagen: " + (e.code || e.message));
-        }
+        } catch (e) { alert(t("eSpeichern", { code: e.code || e.message })); }
       });
       fuss.appendChild(lb);
     } else {
-      const vb = el("button", "klein gefahr", "Kreis verlassen");
+      const vb = el("button", "klein gefahr", t("kVerlassen"));
       vb.type = "button";
       vb.addEventListener("click", async () => {
-        if (!confirm(`Den Kreis „${k.name}“ verlassen?`)) return;
+        if (!confirm(t("kVerlassenFrage", { kreis: k.name }))) return;
         try {
           const info2 = { ...(k.info || {}) };
           delete info2[nutzer.uid];
@@ -1404,27 +1805,84 @@ function zeigeKreise() {
             verwalter:  (k.verwalter  || []).filter((u) => u !== nutzer.uid),
             info: info2
           });
-        } catch (e) {
-          alert("Fehlgeschlagen: " + (e.code || e.message));
-        }
+          await deleteDoc(doc(db, "kreisinfo", k.id + "_" + nutzer.uid)).catch(() => {});
+        } catch (e) { alert(t("eSpeichern", { code: e.code || e.message })); }
       });
       fuss.appendChild(vb);
     }
     karte.appendChild(fuss);
-
     box.appendChild(karte);
   });
 }
+
+$("kreisAnlegen").addEventListener("click", async () => {
+  $("kreisFehler").textContent = "";
+  if (!darfKreiseAnlegen()) { $("kreisFehler").textContent = t("kDarfNicht"); return; }
+
+  const name = $("kName").value.trim();
+  if (!name) { $("kreisFehler").textContent = t("kNameFehlt"); return; }
+
+  try {
+    await addDoc(collection(db, "kreise"), {
+      name,
+      farbe: neueFarbe,
+      art: neueArt,
+      erstellerId: nutzer.uid,
+      mitglieder: [nutzer.uid],
+      verwalter:  [nutzer.uid],
+      info: { [nutzer.uid]: meinSteckbrief() },
+      erstelltAm: serverTimestamp()
+    });
+    $("kName").value = "";
+  } catch (e) {
+    $("kreisFehler").textContent = t("eSpeichern", { code: e.code || e.message });
+    console.error(e);
+  }
+});
+
+/* ---------- Einladen ---------- */
+
+$("einladenZu").addEventListener("click", () => $("dlgEinladen").close());
+
+$("formEinladen").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  $("einladenFehler").textContent = "";
+  $("einladenGut").textContent = "";
+  if (!einladenKreis) return;
+
+  const mail = $("eMail").value.trim().toLowerCase();
+  if (!mail.includes("@")) { $("einladenFehler").textContent = t("eiKeineMail"); return; }
+  if (mail === (nutzer.email || "").toLowerCase()) {
+    $("einladenFehler").textContent = t("eiSchonDrin"); return;
+  }
+
+  try {
+    // Feste Kennung, damit die Sicherheitsregel sie nachschlagen kann.
+    await setDoc(doc(db, "einladungen", einladenKreis.id + "_" + mail), {
+      kreisId:   einladenKreis.id,
+      kreisName: einladenKreis.name,
+      email:     mail,
+      vonUid:    nutzer.uid,
+      vonName:   nutzer.displayName || "",
+      alsVerwalter: $("eVerwalter").checked,
+      erstelltAm: serverTimestamp()
+    });
+    $("einladenGut").textContent = t("eiErfolg", { mail });
+    $("eMail").value = "";
+    await ladeOffeneEinladungen();
+  } catch (e) {
+    $("einladenFehler").textContent = t("eSpeichern", { code: e.code || e.message });
+    console.error(e);
+  }
+});
 
 /* ===================================================================
    NACHRICHTEN
    =================================================================== */
 
-let schreibenAnUid = null;
-
 function oeffneSchreiben(uid, name) {
   schreibenAnUid = uid;
-  $("schreibenAn").textContent = "An " + (name || "diese Person");
+  $("schreibenAn").textContent = t("sAn", { name: name || "" });
   $("sText").value = "";
   $("schreibenFehler").textContent = "";
   $("schreibenGut").textContent = "";
@@ -1448,20 +1906,20 @@ $("formSchreiben").addEventListener("submit", async (ev) => {
       gelesen: false,
       erstelltAm: serverTimestamp()
     });
-    $("schreibenGut").textContent = "Gesendet.";
+    $("schreibenGut").textContent = t("sGesendet");
     $("sText").value = "";
     setTimeout(() => $("dlgSchreiben").close(), 800);
   } catch (e) {
-    $("schreibenFehler").textContent = "Fehlgeschlagen: " + (e.code || e.message);
+    $("schreibenFehler").textContent = t("eSpeichern", { code: e.code || e.message });
     console.error(e);
   }
 });
 
-/* Wenn ich etwas mit einem Kreis teile, bekommen die anderen Bescheid */
+/* Teile ich etwas mit einem Kreis, bekommen die anderen Bescheid */
 async function meldeGeteilt(titel, kreisIds, eintragId) {
   const empfaenger = new Set();
   meineKreise.filter((k) => kreisIds.includes(k.id))
-             .forEach((k) => (k.mitglieder || []).forEach((u) => {
+             .forEach((k) => siehtMichDurch(k).forEach((u) => {
                if (u !== nutzer.uid) empfaenger.add(u);
              }));
   if (!empfaenger.size) return;
@@ -1471,18 +1929,28 @@ async function meldeGeteilt(titel, kreisIds, eintragId) {
   try {
     for (const uid of empfaenger) {
       await addDoc(collection(db, "nachrichten"), {
-        anUid:   uid,
-        vonUid:  nutzer.uid,
+        anUid: uid, vonUid: nutzer.uid,
         vonName: nutzer.displayName || nutzer.email || "",
-        art:     "geteilt",
-        text:    titel,
-        kreisName: kreisNamen,
-        eintragId: eintragId || "",
-        gelesen: false,
+        art: "geteilt", text: titel, kreisName: kreisNamen,
+        eintragId: eintragId || "", gelesen: false,
         erstelltAm: serverTimestamp()
       });
     }
-  } catch (e) { console.warn("Hinweis konnte nicht gesendet werden:", e.code); }
+  } catch (e) { console.warn("Hinweis:", e.code); }
+}
+
+async function meldeZugewiesen(titel, uids, eintragId) {
+  try {
+    for (const uid of uids) {
+      await addDoc(collection(db, "nachrichten"), {
+        anUid: uid, vonUid: nutzer.uid,
+        vonName: nutzer.displayName || nutzer.email || "",
+        art: "zuweisung", text: titel,
+        eintragId: eintragId || "", gelesen: false,
+        erstelltAm: serverTimestamp()
+      });
+    }
+  } catch (e) { console.warn("Zuweisung:", e.code); }
 }
 
 $("postBtn").addEventListener("click", () => { zeigePost(); $("dlgPost").showModal(); });
@@ -1502,10 +1970,19 @@ function wannText(zeit) {
   if (!zeit || !zeit.seconds) return "";
   const d = new Date(zeit.seconds * 1000);
   const min = Math.round((Date.now() - d.getTime()) / 60000);
-  if (min < 1) return "gerade eben";
-  if (min < 60) return "vor " + min + " Min";
-  if (min < 1440) return "vor " + Math.round(min / 60) + " Std";
-  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+  if (min < 1)    return t("nGerade");
+  if (min < 60)   return t("nVorMin", { n: min });
+  if (min < 1440) return t("nVorStd", { n: Math.round(min / 60) });
+  return `${d.getDate()}.${d.getMonth() + 1}.`;
+}
+
+function postText(n) {
+  if (n.art === "geteilt")
+    return t("nHatGeteilt", { titel: n.text, kreis: n.kreisName || "—" });
+  if (n.art === "zuweisung") return t("nHatZugewiesen", { titel: n.text });
+  if (n.art === "zusage")    return t("nHatZugesagt",   { titel: n.text });
+  if (n.art === "absage")    return t("nHatAbgesagt",   { titel: n.text });
+  return n.text;
 }
 
 function zeigePost() {
@@ -1513,7 +1990,7 @@ function zeigePost() {
   box.innerHTML = "";
 
   if (!nachrichten.length) {
-    box.appendChild(el("div", "leer", "Keine Nachrichten."));
+    box.appendChild(el("div", "leer", t("nKeine")));
     return;
   }
 
@@ -1522,21 +1999,15 @@ function zeigePost() {
 
     const kopf = el("div");
     kopf.style.cssText = "display:flex;align-items:baseline;gap:8px";
-    kopf.appendChild(el("span", "von", n.vonName || "Jemand"));
+    kopf.appendChild(el("span", "von", n.vonName || t("nJemand")));
     kopf.appendChild(el("span", "wann", wannText(n.erstelltAm)));
     k.appendChild(kopf);
-
-    if (n.art === "geteilt") {
-      k.appendChild(el("div", "text",
-        `hat „${n.text}“ mit ${n.kreisName || "einem Kreis"} geteilt`));
-    } else {
-      k.appendChild(el("div", "text", n.text));
-    }
+    k.appendChild(el("div", "text", postText(n)));
 
     const knoepfe = el("div", "knoepfe");
 
     if (!n.gelesen) {
-      const g = el("button", null, "Gelesen");
+      const g = el("button", null, t("nGelesen"));
       g.type = "button";
       g.addEventListener("click", () =>
         updateDoc(doc(db, "nachrichten", n.id), { gelesen: true }).catch(console.error));
@@ -1544,7 +2015,7 @@ function zeigePost() {
     }
 
     if (n.art === "nachricht" && alleNutzer[n.vonUid]) {
-      const a = el("button", null, "Antworten");
+      const a = el("button", null, t("nAntworten"));
       a.type = "button";
       a.addEventListener("click", () => {
         $("dlgPost").close();
@@ -1553,7 +2024,7 @@ function zeigePost() {
       knoepfe.appendChild(a);
     }
 
-    const w = el("button", null, "Löschen");
+    const w = el("button", null, t("loeschen"));
     w.type = "button";
     w.addEventListener("click", () =>
       deleteDoc(doc(db, "nachrichten", n.id)).catch(console.error));
@@ -1564,69 +2035,6 @@ function zeigePost() {
   });
 }
 
-$("kreisAnlegen").addEventListener("click", async () => {
-  $("kreisFehler").textContent = "";
-  const name = $("kName").value.trim();
-  if (!name) { $("kreisFehler").textContent = "Gib dem Kreis einen Namen."; return; }
-
-  try {
-    await addDoc(collection(db, "kreise"), {
-      name,
-      farbe: neueFarbe,
-      erstellerId: nutzer.uid,
-      mitglieder: [nutzer.uid],
-      verwalter:  [nutzer.uid],
-      info: {
-        [nutzer.uid]: {
-          name: nutzer.displayName || "",
-          email: (nutzer.email || "").toLowerCase(),
-          photoURL: nutzer.photoURL || ""
-        }
-      },
-      erstelltAm: serverTimestamp()
-    });
-    $("kName").value = "";
-  } catch (e) {
-    $("kreisFehler").textContent = "Fehlgeschlagen: " + (e.code || e.message);
-    console.error(e);
-  }
-});
-
-/* ---------- Einladen ---------- */
-
-$("einladenZu").addEventListener("click", () => $("dlgEinladen").close());
-
-$("formEinladen").addEventListener("submit", async (ev) => {
-  ev.preventDefault();
-  $("einladenFehler").textContent = "";
-  $("einladenGut").textContent = "";
-  if (!einladenKreis) return;
-
-  const mail = $("eMail").value.trim().toLowerCase();
-  if (!mail.includes("@")) { $("einladenFehler").textContent = "Das sieht nicht nach einer E-Mail aus."; return; }
-  if (mail === (nutzer.email || "").toLowerCase()) { $("einladenFehler").textContent = "Du bist schon drin."; return; }
-
-  try {
-    // Feste Kennung, damit die Sicherheitsregel sie nachschlagen kann.
-    await setDoc(doc(db, "einladungen", einladenKreis.id + "_" + mail), {
-      kreisId:   einladenKreis.id,
-      kreisName: einladenKreis.name,
-      email:     mail,
-      vonUid:    nutzer.uid,
-      vonName:   nutzer.displayName || "",
-      alsVerwalter: $("eVerwalter").checked,
-      erstelltAm: serverTimestamp()
-    });
-
-    $("einladenGut").textContent =
-      "Eingeladen. " + mail + " ist im Kreis, sobald sie sich mit dieser Adresse anmeldet.";
-    $("eMail").value = "";
-  } catch (e) {
-    $("einladenFehler").textContent = "Fehlgeschlagen: " + (e.code || e.message);
-    console.error(e);
-  }
-});
-
 /* ===================================================================
    TERMIN FINDEN
    Liest nur den Schattenkalender: Datum und Uhrzeit, keine Titel.
@@ -1635,15 +2043,20 @@ $("formEinladen").addEventListener("submit", async (ev) => {
 let findenPersonenWahl = [];
 let findenDauer = 60;
 
-[30, 60, 90, 120].forEach((m, i) => {
-  const b = el("button", i === 1 ? "an" : "", m < 60 ? m + " Min" : (m / 60) + " Std");
-  b.type = "button";
-  b.addEventListener("click", () => {
-    findenDauer = m;
-    [...$("fvDauerWahl").children].forEach((x) => x.classList.toggle("an", x === b));
+function baueDauerWahl() {
+  const box = $("fvDauerWahl");
+  box.innerHTML = "";
+  [30, 60, 90, 120].forEach((m) => {
+    const b = el("button", m === findenDauer ? "an" : "",
+      m < 60 ? t("tfMin", { n: m }) : t("tfStd", { n: m / 60 }));
+    b.type = "button";
+    b.addEventListener("click", () => {
+      findenDauer = m;
+      [...box.children].forEach((x) => x.classList.toggle("an", x === b));
+    });
+    box.appendChild(b);
   });
-  $("fvDauerWahl").appendChild(b);
-});
+}
 
 $("findenBtn").addEventListener("click", () => {
   findenPersonenWahl = [];
@@ -1654,17 +2067,13 @@ $("findenBtn").addEventListener("click", () => {
 
   const box = $("findenPersonen");
   box.innerHTML = "";
-  const andere = [...new Set(meineKreise.flatMap((k) => k.mitglieder || []))]
-    .filter((u) => u !== nutzer.uid);
+  const andere = sichtbarePersonen();
 
-  if (!andere.length) {
-    box.appendChild(el("div", "hinweis",
-      "Noch niemand in deinen Kreisen. Lege einen Kreis an und lade jemanden ein."));
-  }
+  if (!andere.length) box.appendChild(el("div", "hinweis", t("tfNiemand")));
 
   andere.forEach((uid) => {
     const info = alleNutzer[uid] || {};
-    const b = el("button", "person", info.name || info.email || "Unbekannt");
+    const b = el("button", "person", info.name || info.email || t("kUnbekannt"));
     b.type = "button";
     b.addEventListener("click", () => {
       const i = findenPersonenWahl.indexOf(uid);
@@ -1681,14 +2090,16 @@ $("findenZu").addEventListener("click", () => $("dlgFinden").close());
 $("findenStart").addEventListener("click", async () => {
   $("findenFehler").textContent = "";
   const erg = $("findenErgebnis");
-  erg.innerHTML = '<div class="hinweis">Suche …</div>';
+  erg.innerHTML = "";
+  erg.appendChild(el("div", "hinweis", t("sucheLaeuft")));
 
   const von = $("fvVon").value, bis = $("fvBis").value;
   const frueh = minuten($("fvFrueh").value), spaet = minuten($("fvSpaet").value);
+  const raus = (k) => { $("findenFehler").textContent = t(k); erg.innerHTML = ""; };
 
-  if (!von || !bis || bis < von) { $("findenFehler").textContent = "Prüfe den Zeitraum."; erg.innerHTML = ""; return; }
-  if (frueh === null || spaet === null || spaet <= frueh) { $("findenFehler").textContent = "Prüfe die Uhrzeiten."; erg.innerHTML = ""; return; }
-  if (tageBis(bis, von) > 60) { $("findenFehler").textContent = "Höchstens 60 Tage auf einmal."; erg.innerHTML = ""; return; }
+  if (!von || !bis || bis < von) return raus("tfZeitraum");
+  if (frueh === null || spaet === null || spaet <= frueh) return raus("tfUhrzeiten");
+  if (tageBis(bis, von) > 60) return raus("tfZuLang");
 
   const wer = [nutzer.uid, ...findenPersonenWahl];
 
@@ -1701,7 +2112,7 @@ $("findenStart").addEventListener("click", async () => {
     belegt = snap.docs.map((d) => d.data()).filter((x) => wer.includes(x.ownerId));
   } catch (e) {
     console.error(e);
-    $("findenFehler").textContent = "Konnte belegte Zeiten nicht laden: " + (e.code || e.message);
+    $("findenFehler").textContent = t("ladeFehler", { code: e.code || e.message });
     erg.innerHTML = "";
     return;
   }
@@ -1709,16 +2120,10 @@ $("findenStart").addEventListener("click", async () => {
   const luecken = freieFenster(belegt, von, bis, frueh, spaet, findenDauer);
 
   erg.innerHTML = "";
-  if (!luecken.length) {
-    erg.appendChild(el("div", "hinweis",
-      "Kein gemeinsames Fenster in diesem Zeitraum. Versuch einen längeren " +
-      "Zeitraum oder eine kürzere Dauer."));
-    return;
-  }
+  if (!luecken.length) { erg.appendChild(el("div", "hinweis", t("tfKeine"))); return; }
 
-  const namen = wer.map((u) => (alleNutzer[u] || {}).name || "?")
-                   .map((n) => n.split(" ")[0]).join(", ");
-  erg.appendChild(el("div", "hinweis", `Alle frei: ${namen}`));
+  const namen = wer.map(vorname).join(", ");
+  erg.appendChild(el("div", "hinweis", t("tfAlleFrei", { namen })));
 
   luecken.slice(0, 40).forEach((l) => {
     const z = el("div", "luecke");
@@ -1726,11 +2131,15 @@ $("findenStart").addEventListener("click", async () => {
     links.appendChild(el("b", null, ausMinuten(l.von) + " – " + ausMinuten(l.bis)));
     links.appendChild(el("div", "dauer", kurzDatum(l.tag)));
     z.appendChild(links);
+
     const dauer = l.bis - l.von;
     z.appendChild(el("span", "marke",
-      dauer >= 60 ? Math.floor(dauer / 60) + " Std" + (dauer % 60 ? " " + (dauer % 60) + " Min" : "")
-                  : dauer + " Min"));
-    const nimm = el("button", "knopf", "Eintragen");
+      dauer >= 60
+        ? t("tfStd", { n: Math.floor(dauer / 60) }) +
+          (dauer % 60 ? " " + t("tfMin", { n: dauer % 60 }) : "")
+        : t("tfMin", { n: dauer })));
+
+    const nimm = el("button", "knopf", t("tfEintragen"));
     nimm.type = "button";
     nimm.style.cssText = "width:auto;padding:8px 14px;font-size:13px";
     nimm.addEventListener("click", () => {
@@ -1754,7 +2163,6 @@ function freieFenster(belegt, von, bis, frueh, spaet, dauer) {
   const raus = [];
 
   for (let tag = von; tag <= bis; tag = plus(tag, 1)) {
-    // Alle belegten Zeitfenster dieses Tages einsammeln
     const blocks = [];
     belegt.forEach((e) => {
       if (!laeuftAnTag(e, tag)) return;
@@ -1789,20 +2197,18 @@ function freieFenster(belegt, von, bis, frueh, spaet, dauer) {
 }
 
 /* ===================================================================
-   KONTO UND DASHBOARD
+   KONTO
    =================================================================== */
 
-$("michBtn").addEventListener("click", async () => {
+$("michBtn").addEventListener("click", () => {
   zeigeMeineZahlen();
-  const admin = ADMIN_MAILS.includes((nutzer.email || "").toLowerCase());
-  $("adminBlock").classList.toggle("versteckt", !admin);
-  if (admin) await ladeDashboard();
+  $("betriebBtn").classList.toggle("versteckt", !istBetreiber());
   $("dlgMich").showModal();
 });
 $("michZu").addEventListener("click", () => $("dlgMich").close());
 
-function kachel(zahl, text) {
-  const k = el("div", "kachel");
+function kachel(zahl, text, warn) {
+  const k = el("div", "kachel" + (warn ? " warn" : ""));
   k.appendChild(el("b", null, String(zahl)));
   k.appendChild(el("span", null, text));
   return k;
@@ -1819,19 +2225,36 @@ function zeigeMeineZahlen() {
   const offen   = tasks.filter((e) => !istSerie(e) && e.status !== "erledigt");
   const spaet   = offen.filter((e) => e.frist && e.frist < h);
   const serien  = meins.filter(istSerie);
-  const geteiltVonMir = meins.filter((e) => (e.kreisIds || []).length);
+  const geteilt = meins.filter((e) => (e.kreisIds || []).length);
 
-  box.appendChild(kachel(termine.length, "Termine"));
-  box.appendChild(kachel(offen.length, "offene Aufgaben"));
-  box.appendChild(kachel(spaet.length, "überfällig"));
-  box.appendChild(kachel(serien.length, "Serien"));
-  box.appendChild(kachel(meineKreise.length, "Kreise"));
-  box.appendChild(kachel(geteiltVonMir.length, "geteilt"));
+  box.appendChild(kachel(termine.length, t("koTermine")));
+  box.appendChild(kachel(offen.length,   t("koOffen")));
+  box.appendChild(kachel(spaet.length,   t("koUeberfaellig"), spaet.length > 0));
+  box.appendChild(kachel(serien.length,  t("koSerien")));
+  box.appendChild(kachel(meineKreise.length, t("koKreise")));
+  box.appendChild(kachel(geteilt.length, t("koGeteilt")));
 }
 
-async function ladeDashboard() {
-  const t = $("adminTabelle");
-  t.innerHTML = "<tr><th>Name</th><th>E-Mail</th><th>Zuletzt da</th></tr>";
+/* ===================================================================
+   BETRIEB
+   Konten und Kreise. Termine und Inhalte stehen hier bewusst nicht:
+   dafür bräuchte es Lesezugriff auf fremde Einträge, und genau den
+   soll der Betreiber nicht haben.
+   =================================================================== */
+
+$("betriebBtn").addEventListener("click", async () => {
+  if (!istBetreiber()) return;
+  $("dlgBetrieb").showModal();
+  await ladeBetrieb();
+});
+$("betriebZu").addEventListener("click", () => $("dlgBetrieb").close());
+
+async function ladeBetrieb() {
+  const tab = $("betriebTabelle");
+  const zb  = $("betriebZahlen");
+  const kb  = $("betriebKreise");
+  $("betriebFehler").textContent = "";
+  tab.innerHTML = ""; zb.innerHTML = ""; kb.innerHTML = "";
 
   try {
     const snap = await getDocs(collection(db, "users"));
@@ -1839,35 +2262,78 @@ async function ladeDashboard() {
       .sort((a, b) => (b.zuletzt?.seconds || 0) - (a.zuletzt?.seconds || 0));
 
     const jetzt = Date.now();
-    let aktiv7 = 0;
+    let aktiv7 = 0, gesperrt = 0;
+
+    const kopf = el("tr");
+    [t("bName"), t("bMail"), t("bZuletzt"), t("bStatus"), t("bDarfKreise")]
+      .forEach((x) => kopf.appendChild(el("th", null, x)));
+    tab.appendChild(kopf);
+
     reihen.forEach((u) => {
       const tr = el("tr");
       tr.appendChild(el("td", null, u.name || "—"));
       tr.appendChild(el("td", "n", u.email || "—"));
+
       let z = "—";
       if (u.zuletzt?.seconds) {
         const d = new Date(u.zuletzt.seconds * 1000);
         if (jetzt - d.getTime() < 7 * 86400000) aktiv7++;
-        z = d.toLocaleDateString("de-DE",
-              { day: "2-digit", month: "2-digit", year: "2-digit" });
+        z = `${d.getDate()}.${d.getMonth() + 1}.${String(d.getFullYear()).slice(2)}`;
       }
-      tr.appendChild(el("td", "n", z));
-      t.appendChild(tr);
+      const tdZ = el("td", "n"); tdZ.appendChild(el("span", "ltr", z));
+      tr.appendChild(tdZ);
+
+      // Status: sperren und freigeben
+      const aktiv = u.aktiv !== false;
+      if (!aktiv) gesperrt++;
+      const tdS = el("td");
+      const sb = el("button", "klein" + (aktiv ? " gefahr" : ""),
+                    aktiv ? t("bSperren") : t("bFreigeben"));
+      sb.type = "button";
+      sb.addEventListener("click", async () => {
+        sb.disabled = true;
+        try {
+          await updateDoc(doc(db, "users", u.uid), { aktiv: !aktiv });
+          await ladeBetrieb();
+        } catch (e) {
+          $("betriebFehler").textContent = t("eSpeichern", { code: e.code || e.message });
+          sb.disabled = false;
+        }
+      });
+      tdS.appendChild(el("div", aktiv ? "" : "rolle", aktiv ? t("bAktiv") : t("bGesperrt")));
+      tdS.appendChild(sb);
+      tr.appendChild(tdS);
+
+      // Darf Kreise anlegen
+      const darf = u.darfKreiseAnlegen !== false;
+      const tdK = el("td");
+      const kbn = el("button", "klein", darf ? t("bJa") : t("bNein"));
+      kbn.type = "button";
+      kbn.addEventListener("click", async () => {
+        kbn.disabled = true;
+        try {
+          await updateDoc(doc(db, "users", u.uid), { darfKreiseAnlegen: !darf });
+          await ladeBetrieb();
+        } catch (e) {
+          $("betriebFehler").textContent = t("eSpeichern", { code: e.code || e.message });
+          kbn.disabled = false;
+        }
+      });
+      tdK.appendChild(kbn);
+      tr.appendChild(tdK);
+
+      tab.appendChild(tr);
     });
 
-    // Zahlen oben
-    const zb = $("adminZahlen");
-    zb.innerHTML = "";
-    zb.appendChild(kachel(reihen.length, "Personen"));
-    zb.appendChild(kachel(aktiv7, "aktiv, 7 Tage"));
+    zb.appendChild(kachel(reihen.length, t("bPersonen")));
+    zb.appendChild(kachel(aktiv7, t("bAktiv7")));
+    zb.appendChild(kachel(meineKreise.length, t("bKreise")));
+    if (gesperrt) zb.appendChild(kachel(gesperrt, t("bGesperrt"), true));
 
-    // Kreise, die ich sehen darf
-    const kb = $("adminKreise");
-    kb.innerHTML = "";
+    // Kreise, die ich selbst sehen darf
     if (!meineKreise.length) {
-      kb.appendChild(el("div", "hinweis", "Noch keine Kreise."));
+      kb.appendChild(el("div", "hinweis", t("kKeine")));
     } else {
-      zb.appendChild(kachel(meineKreise.length, "Kreise"));
       meineKreise.forEach((k) => {
         const z = el("div", "mitglied");
         z.style.borderTop = "none";
@@ -1875,33 +2341,29 @@ async function ladeDashboard() {
         p.style.background = k.farbe;
         p.style.width = "12px"; p.style.height = "12px";
         z.appendChild(p);
-        const t2 = el("div");
-        t2.style.flexGrow = "1";
-        t2.appendChild(el("div", null, k.name));
-        const namen = (k.mitglieder || [])
-          .map((u) => ((k.info || {})[u] || {}).name || "?")
-          .map((n) => n.split(" ")[0]).join(", ");
-        t2.appendChild(el("div", "mail", namen));
-        z.appendChild(t2);
+        const txt = el("div");
+        txt.style.flexGrow = "1";
+        txt.appendChild(el("div", null,
+          k.name + " · " + (istStern(k) ? t("kArtStern") : t("kArtKreis"))));
+        txt.appendChild(el("div", "mail",
+          (k.mitglieder || []).length + " " + t("bPersonen")));
+        z.appendChild(txt);
         const warte = (offeneEinladungen[k.id] || []).length;
-        if (warte) z.appendChild(el("span", "rolle", warte + " offen"));
+        if (warte) z.appendChild(el("span", "rolle", t("bOffen", { n: warte })));
         kb.appendChild(z);
       });
     }
-
-    $("adminHinweis").textContent =
-      "Das Dashboard sieht nur, wer in ADMIN_MAILS oben in app.js steht. " +
-      "Termine anderer stehen hier bewusst nicht, dafür bräuchte es Zugriff " +
-      "auf fremde Einträge.";
   } catch (e) {
-    $("adminHinweis").textContent = "Konnte nicht laden: " + (e.code || e.message);
+    $("betriebFehler").textContent = t("bFehler", { code: e.code || e.message });
     console.error(e);
   }
 }
 
 /* ===================================================================
-   PWA
+   START
    =================================================================== */
+
+wendeSpracheAn(gemerkt("sprache") || spracheRaten());
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
