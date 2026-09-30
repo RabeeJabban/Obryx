@@ -342,14 +342,8 @@ function starteEintraege() {
     zeichne();
   };
 
-  const fehler = (e) => {
-    console.error("Eintraege:", e);
-    $("buehne").innerHTML =
-      '<div class="leer"><div class="gross">!</div>' +
-      'Konnte nicht laden. Drücke F12 und schau in die Konsole – ' +
-      'dort steht meist ein Link zum Anlegen eines Index.</div>';
-  };
-
+  // Abfrage 1: meine eigenen Eintraege. Die ist die wichtige.
+  // Geht sie schief, ist die App leer und sagt das auch.
   stopEigene = onSnapshot(
     query(collection(db, "eintraege"), where("ownerId", "==", nutzer.uid)),
     (snap) => {
@@ -357,9 +351,20 @@ function starteEintraege() {
       zusammenfuehren();
       nachruestenFallsNoetig();
     },
-    fehler
+    (e) => {
+      console.error("EIGENE Einträge:", e.code, e.message);
+      $("buehne").innerHTML =
+        '<div class="leer"><div class="gross">!</div>' +
+        'Konnte nicht laden: ' + (e.code || e.message) +
+        '<br><br>Bei „permission-denied“ sind die Sicherheitsregeln noch nicht ' +
+        'veröffentlicht. Bei „failed-precondition“ fehlt ein Index, dann steht ' +
+        'in der Konsole ein Link zum Anlegen.</div>';
+    }
   );
 
+  // Abfrage 2: was andere mit meinen Kreisen geteilt haben.
+  // Solange es keine Kreise gibt, liefert die nichts. Ein Fehler hier
+  // darf den Rest deshalb nicht blockieren.
   stopGeteilte = onSnapshot(
     query(collection(db, "eintraege"),
           where("sichtbarFuer", "array-contains", nutzer.uid)),
@@ -368,7 +373,11 @@ function starteEintraege() {
                           .filter((e) => e.ownerId !== nutzer.uid);
       zusammenfuehren();
     },
-    fehler
+    (e) => {
+      console.warn("GETEILTE Einträge (nicht kritisch):", e.code, e.message);
+      geteilte = [];
+      zusammenfuehren();
+    }
   );
 }
 
