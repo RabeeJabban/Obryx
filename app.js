@@ -639,12 +639,52 @@ async function einladungenAnnehmen() {
             kreisId: ein.kreisId, uid: nutzer.uid,
             name: meinName(), email: mail
           }).catch((e) => console.warn("kreisinfo:", e.code));
+
+          await meldeBeitritt(daten.name || "", ein.vonUid);
         }
         await deleteDoc(d.ref);
       } catch (e) { console.error("Einladung", d.id, e); }
     }
   } catch (e) { console.error("Einladungen:", e); }
 }
+
+/* Beim Beitritt sagen beide Seiten Bescheid: der Neue erfährt, dass er
+   drin ist, und der Verwalter, dass die Einladung angekommen ist. */
+async function meldeBeitritt(kreisName, anwerberUid) {
+  try {
+    await addDoc(collection(db, "nachrichten"), {
+      anUid: nutzer.uid, vonUid: nutzer.uid, vonName: meinName(),
+      art: "willkommen", text: kreisName, kreisName,
+      gelesen: false, erstelltAm: serverTimestamp()
+    });
+    if (anwerberUid && anwerberUid !== nutzer.uid) {
+      await addDoc(collection(db, "nachrichten"), {
+        anUid: anwerberUid, vonUid: nutzer.uid, vonName: meinName(),
+        art: "beigetreten", text: kreisName, kreisName,
+        gelesen: false, erstelltAm: serverTimestamp()
+      });
+    }
+  } catch (e) { console.warn("Beitritt melden:", e.code); }
+}
+
+/* Einladungen werden nicht nur beim Anmelden geprüft, sondern auch
+   jedes Mal, wenn die App wieder in den Vordergrund kommt. Sonst müsste
+   jemand, der schon angemeldet ist, die App erst neu starten, um in
+   einen Kreis zu kommen. Höchstens alle 20 Sekunden, damit das Wechseln
+   zwischen Fenstern keine Abfragen regnen lässt. */
+let letztePruefung = 0;
+async function pruefeEinladungen(erzwingen) {
+  if (!nutzer || !profil.name) return;
+  const jetzt = Date.now();
+  if (!erzwingen && jetzt - letztePruefung < 20000) return;
+  letztePruefung = jetzt;
+  await einladungenAnnehmen();
+}
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) pruefeEinladungen();
+});
+window.addEventListener("focus", () => pruefeEinladungen());
+window.addEventListener("online", () => pruefeEinladungen(true));
 
 /* ===================================================================
    DATEN LADEN
@@ -2268,6 +2308,8 @@ function zeigeKreise() {
         $("eVerwalter").checked = false;
         $("einladenFehler").textContent = "";
         $("einladenGut").textContent = "";
+        $("einladenKopieren").classList.add("versteckt");
+        letzteEinladung = null;
         $("dlgEinladen").showModal();
       });
       kopf.appendChild(b);
@@ -2543,10 +2585,39 @@ $("formEinladen").addEventListener("submit", async (ev) => {
       erstelltAm: serverTimestamp()
     });
     $("einladenGut").textContent = t("eiErfolg", { mail });
+    letzteEinladung = { mail, kreis: einladenKreis.name };
+    $("einladenKopieren").classList.remove("versteckt");
     $("eMail").value = "";
     await ladeOffeneEinladungen();
   } catch (e) {
     $("einladenFehler").textContent = t("eSpeichern", { code: e.code || e.message });
+  }
+});
+
+/* Fertiger Text zum Weiterschicken. Ohne den müsste man der Person
+   erst den Link schicken und ihr dann erklären, mit welcher Adresse
+   sie sich anmelden soll. Das sind zwei Nachrichten zu viel. */
+let letzteEinladung = null;
+
+function appLink() {
+  return location.origin + location.pathname.replace(/index\.html$/, "");
+}
+
+$("einladenKopieren").addEventListener("click", async () => {
+  if (!letzteEinladung) { $("einladenFehler").textContent = t("eiNochNicht"); return; }
+  const text = t("eiText", {
+    link: appLink(), mail: letzteEinladung.mail, kreis: letzteEinladung.kreis
+  });
+  try {
+    await navigator.clipboard.writeText(text);
+    $("einladenGut").textContent = t("eiKopiert", { mail: letzteEinladung.mail });
+  } catch (e) {
+    // Manche Browser geben die Zwischenablage nicht her. Dann zum Markieren anbieten.
+    const f = el("textarea");
+    f.value = text;
+    f.style.cssText = "width:100%;margin-top:10px;min-height:120px";
+    $("einladenKopieren").after(f);
+    f.select();
   }
 });
 
@@ -2641,6 +2712,8 @@ function postText(n) {
   if (n.art === "zuweisung") return t("nHatZugewiesen", { titel: n.text });
   if (n.art === "zusage")    return t("nHatZugesagt",   { titel: n.text });
   if (n.art === "absage")    return t("nHatAbgesagt",   { titel: n.text });
+  if (n.art === "willkommen")  return t("nWillkommen",  { kreis: n.kreisName || n.text });
+  if (n.art === "beigetreten") return t("nBeigetreten", { kreis: n.kreisName || n.text });
   return n.text;
 }
 
@@ -2653,7 +2726,8 @@ function zeigePost() {
     const k = el("div", "post" + (n.gelesen ? "" : " neu"));
     const kopf = el("div");
     kopf.style.cssText = "display:flex;align-items:baseline;gap:8px";
-    kopf.appendChild(el("span", "von", n.vonName || t("nJemand")));
+    kopf.appendChild(el("span", "von",
+      n.art === "willkommen" ? "Orbyx" : (n.vonName || t("nJemand"))));
     kopf.appendChild(el("span", "wann", wannText(n.erstelltAm)));
     k.appendChild(kopf);
     k.appendChild(el("div", "text", postText(n)));
