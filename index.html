@@ -11,75 +11,78 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Orbyx">
-  <meta name="theme-color" content="#F7F8FA" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0E1420" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F6F8FB" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0D131C" media="(prefers-color-scheme: dark)">
   <meta name="description" content="Orbyx – organize your chaos">
 
 <style>
 /* ===================================================================
    ORBYX · FARBEN
-   Die Palette kommt aus dem Logo: Bernstein, Grün, Blau auf Tinte.
-   Dieselben Farben bekommen die Kreise in der App.
+   Die Palette kommt aus dem Symbol: Grün, Rot, Orange, Blau auf Tinte.
+   Dieselben Farben stehen den Kreisen zur Auswahl.
    =================================================================== */
 :root {
   color-scheme: light dark;
 
-  --grund:    #F7F8FA;
+  --grund:    #F6F8FB;
   --flaeche:  #FFFFFF;
-  --flaeche2: #EEF1F5;
-  --linie:    #DFE4EB;
-  --linie2:   #C6CEDA;
-  --text:     #16233A;
-  --text2:    #5C6880;
-  --text3:    #8C96A8;
+  --flaeche2: #EDF1F7;
+  --flaeche3: #E3E9F2;
+  --linie:    #DEE4EC;
+  --linie2:   #C3CCD9;
+  --text:     #17212E;
+  --text2:    #5A6879;
+  --text3:    #8A96A6;
 
-  --blau:      #1B65C9;
-  --blauHell:  #E4EDFB;
-  --gruen:     #219447;
-  --gruenHell: #E2F3E8;
-  --gelb:      #B8820F;
-  --gelbHell:  #FBF0D8;
-  --rot:       #C0392B;
-  --rotHell:   #FBE7E4;
+  --blau:      #1568E0;
+  --blauHell:  #E6EEFC;
+  --gruen:     #0E9A4C;
+  --gruenHell: #E1F5EA;
+  --orange:    #C06A00;
+  --orangeHell:#FDEEDC;
+  --rot:       #D01030;
+  --rotHell:   #FCE6EA;
 
   --akzent:     var(--blau);
   --akzentHell: var(--blauHell);
 
-  /* Kreisfarben, aus dem Logo abgeleitet */
-  --k0:#1B65C9; --k1:#219447; --k2:#D9A21B; --k3:#C0392B; --k4:#7A4FC4;
-  --k5:#0F8E96; --k6:#D2691E; --k7:#C2417F; --k8:#4A6572; --k9:#5C8A1E;
+  /* Zehn Kreisfarben, die ersten vier sind die Farben des Symbols */
+  --k0:#1874FF; --k1:#10C862; --k2:#FF9100; --k3:#F5123A; --k4:#8B5CF6;
+  --k5:#06B6D4; --k6:#E8B923; --k7:#EC4899; --k8:#64748B; --k9:#84CC16;
 
-  --schatten:  0 1px 2px rgba(22,35,58,.06);
-  --schatten2: 0 10px 34px rgba(22,35,58,.18);
+  --schatten:  0 1px 2px rgba(23,33,46,.07);
+  --schatten2: 0 12px 38px rgba(23,33,46,.20);
   --rund: 14px; --rund2: 20px;
   --unten: env(safe-area-inset-bottom, 0px);
+  --stunde: 54px;                 /* Höhe einer Stunde im Plan */
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --grund:    #0E1420;
-    --flaeche:  #172033;
-    --flaeche2: #1F2B42;
-    --linie:    #26334A;
-    --linie2:   #3A4A66;
-    --text:     #E8EDF5;
-    --text2:    #9AA7BF;
-    --text3:    #6B7890;
+    --grund:    #0D131C;
+    --flaeche:  #16202D;
+    --flaeche2: #1E2A3A;
+    --flaeche3: #263447;
+    --linie:    #263343;
+    --linie2:   #3A4A5F;
+    --text:     #E9EEF6;
+    --text2:    #98A6B8;
+    --text3:    #6A7789;
 
-    --blau:      #5B9BF0;
-    --blauHell:  #14263F;
-    --gruen:     #4CC271;
-    --gruenHell: #102D1C;
-    --gelb:      #E8B944;
-    --gelbHell:  #2E2410;
-    --rot:       #F0776A;
-    --rotHell:   #331A17;
+    --blau:      #5FA8FF;
+    --blauHell:  #11253D;
+    --gruen:     #3FD07E;
+    --gruenHell: #0C2B1C;
+    --orange:    #FFA83D;
+    --orangeHell:#2E2011;
+    --rot:       #FF6076;
+    --rotHell:   #331620;
 
-    --k0:#5B9BF0; --k1:#4CC271; --k2:#E8B944; --k3:#F0776A; --k4:#A98BF0;
-    --k5:#3FC4CE; --k6:#F0964A; --k7:#EC7AB4; --k8:#8FA3B8; --k9:#9BC94A;
+    --k0:#4D96FF; --k1:#3FD07E; --k2:#FFA83D; --k3:#FF6076; --k4:#A78BFA;
+    --k5:#38D3E8; --k6:#F2CC4B; --k7:#F472B6; --k8:#94A3B8; --k9:#A3E635;
 
-    --schatten:  0 1px 2px rgba(0,0,0,.5);
-    --schatten2: 0 10px 34px rgba(0,0,0,.65);
+    --schatten:  0 1px 2px rgba(0,0,0,.55);
+    --schatten2: 0 12px 38px rgba(0,0,0,.7);
   }
 }
 
@@ -117,11 +120,9 @@ button { cursor: pointer; }
   border-radius: var(--rund2); box-shadow: var(--schatten);
   padding: 42px 28px; width: 100%; max-width: 390px; text-align: center;
 }
-.karte h1 {
-  margin: 20px 0 2px; font-size: 32px; font-weight: 700; letter-spacing: -.8px;
-}
+.karte h1 { margin: 20px 0 2px; font-size: 32px; font-weight: 700; letter-spacing: -.8px; }
 .karte p { margin: 6px 0 26px; color: var(--text2); font-size: 14px; }
-.sprachwahl { display: flex; gap: 8px; justify-content: center; margin-top: 18px; }
+.sprachwahl { display: flex; gap: 8px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
 .sprachwahl button {
   padding: 7px 14px; border-radius: 99px; font-size: 13px; font-weight: 600;
   border: 1px solid var(--linie); background: none; color: var(--text2);
@@ -132,8 +133,8 @@ button { cursor: pointer; }
   width: 100%; padding: 13px 18px; border: 0; border-radius: 12px;
   background: var(--akzent); color: #fff; font-size: 15px; font-weight: 600;
 }
-.knopf.hell   { background: var(--flaeche2); color: var(--text); }
-.knopf.rand   { background: none; color: var(--text2); border: 1px solid var(--linie2); }
+.knopf.hell { background: var(--flaeche2); color: var(--text); }
+.knopf.rand { background: none; color: var(--text2); border: 1px solid var(--linie2); }
 .knopf:active { transform: translateY(1px); }
 .knopf:disabled { opacity: .45; }
 
@@ -154,7 +155,6 @@ header .marke b { font-size: 19px; letter-spacing: -.4px; }
   display: flex; align-items: center; justify-content: center;
 }
 .rundknopf img { width: 100%; height: 100%; border-radius: 10px; object-fit: cover; }
-/* Ohne Profilbild steht im Knopf der erste Buchstabe des Namens */
 .rundknopf[data-kuerzel]:not([data-kuerzel=""])::after {
   content: attr(data-kuerzel); font-size: 15px; font-weight: 700; color: var(--text2);
 }
@@ -170,7 +170,7 @@ header .marke b { font-size: 19px; letter-spacing: -.4px; }
 nav.ansichten {
   display: flex; gap: 4px; padding: 10px 14px 0;
   overflow-x: auto; scrollbar-width: none;
-  max-width: 980px; margin: 0 auto;
+  max-width: 1100px; margin: 0 auto;
 }
 nav.ansichten::-webkit-scrollbar { display: none; }
 nav.ansichten button {
@@ -181,20 +181,18 @@ nav.ansichten button {
 @media (min-width: 420px) { nav.ansichten button { padding: 8px 16px; } }
 nav.ansichten button.an { background: var(--flaeche2); color: var(--text); }
 
-.filter {
-  display: flex; gap: 6px; padding: 8px 14px 0;
-  max-width: 980px; margin: 0 auto;
-}
+.filter { display: flex; gap: 6px; padding: 8px 14px 0; max-width: 1100px; margin: 0 auto; }
 .filter button {
   flex: 1; padding: 7px 10px; border: 1px solid var(--linie); border-radius: 10px;
   background: var(--flaeche); color: var(--text2); font-size: 13px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .filter button.an { background: var(--akzentHell); border-color: var(--akzent); color: var(--akzent); }
 
 /* ---------- Zeitleiste ---------- */
 .zeitleiste {
   display: flex; align-items: center; gap: 8px;
-  padding: 12px 14px 8px; max-width: 980px; margin: 0 auto;
+  padding: 12px 14px 8px; max-width: 1100px; margin: 0 auto;
 }
 .zeitleiste .mitteBlock { flex-grow: 1; min-width: 0; }
 .zeitleiste b { display: block; font-size: 19px; letter-spacing: -.3px; }
@@ -214,17 +212,16 @@ nav.ansichten button.an { background: var(--flaeche2); color: var(--text); }
 .tagMarke.frei { background: var(--gruenHell); color: var(--gruen); }
 
 /* ---------- Suche ---------- */
-.suchleiste { padding: 10px 14px 0; display: flex; gap: 8px; max-width: 980px; margin: 0 auto; }
+.suchleiste { padding: 10px 14px 0; display: flex; gap: 8px; max-width: 1100px; margin: 0 auto; }
 .suchleiste input {
   flex-grow: 1; padding: 11px 14px;
   border: 1px solid var(--linie); border-radius: 12px; background: var(--flaeche);
 }
 
-/* ---------- Liste ---------- */
 main {
   padding: 8px 14px calc(120px + var(--unten));
   display: flex; flex-direction: column; gap: 8px;
-  max-width: 980px; margin: 0 auto;
+  max-width: 1100px; margin: 0 auto;
 }
 .leer { color: var(--text2); font-size: 14px; text-align: center; padding: 48px 20px; }
 .leer .gross { font-size: 34px; margin-bottom: 10px; opacity: .45; }
@@ -237,6 +234,105 @@ main {
 .trenner.warn { color: var(--rot); }
 .trenner::after { content: ""; flex-grow: 1; height: 1px; background: var(--linie); }
 
+/* ===================================================================
+   BALKENPLAN
+   Tag und Woche als Kalender. Links die Stunden, daneben je eine
+   Spalte pro Person (Tag) oder pro Wochentag (Woche).
+   =================================================================== */
+/* Der Plan ist ein eigener Rollbereich. Dadurch bleiben der Spaltenkopf
+   oben und die Stundenspalte an der Seite stehen, während man im Plan
+   scrollt. Ein waagerechter Rollbereich ist immer auch ein senkrechter,
+   deshalb MUSS der Kopf hier drin kleben und nicht am Fenster. */
+.planRolle {
+  overflow: auto; scrollbar-width: thin;
+  max-height: calc(100dvh - 310px);
+  border: 1px solid var(--linie); border-radius: var(--rund);
+  background: var(--flaeche); padding: 0 8px 8px;
+  overscroll-behavior: contain;
+}
+.plan { min-width: 100%; width: max-content; }
+.planKopf, .planKoerper { display: grid; grid-template-columns: 46px 1fr; }
+/* Luft oben, sonst rutscht die erste Stundenzahl unter den Spaltenkopf */
+.planKoerper { padding-top: 8px; }
+.planKopf {
+  position: sticky; top: 0; z-index: 12;
+  background: var(--flaeche); padding: 8px 0 6px;
+}
+.planEcke {
+  position: sticky; inset-inline-start: 0; z-index: 14; background: var(--flaeche);
+}
+.planNamen, .planSpalten { display: flex; gap: 6px; }
+.planNamen > *, .planSpalten > * { flex: 1 0 118px; min-width: 118px; }
+.planNamen.eng > *, .planSpalten.eng > * { flex: 1 1 0; min-width: 0; }
+
+.planName {
+  display: flex; align-items: center; gap: 6px; padding: 6px 8px;
+  background: var(--flaeche); border: 1px solid var(--linie); border-radius: 10px;
+  font-size: 13px; font-weight: 600; overflow: hidden;
+}
+.planName span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.planName.heute { border-color: var(--akzent); color: var(--akzent); }
+.planName .klein2 { font-size: 11px; font-weight: 500; color: var(--text3); }
+
+.planZeit { position: sticky; inset-inline-start: 0; z-index: 2; background: var(--flaeche); }
+.planZeit div {
+  height: var(--stunde); font-size: 11px; color: var(--text3);
+  padding-inline-end: 6px; text-align: end; direction: ltr;
+  transform: translateY(-6px);
+}
+.planFeld { position: relative; }
+.planLinien { position: absolute; inset: 0; pointer-events: none; }
+.planLinien i { position: absolute; inset-inline: 0; height: 1px; background: var(--linie); }
+.planLinien i.halb { opacity: .45; }
+.planJetzt { position: absolute; inset-inline: 0; height: 2px; background: var(--rot); z-index: 6; }
+.planJetzt::before {
+  content: ""; position: absolute; inset-inline-start: -3px; top: -3px;
+  width: 8px; height: 8px; border-radius: 50%; background: var(--rot);
+}
+.planSpalten { position: relative; }
+.planSpalte { position: relative; border-inline-start: 1px solid var(--linie); }
+.planSpalte.frei { background: var(--flaeche2); border-radius: 10px; }
+
+.balken {
+  position: absolute; border-radius: 9px; padding: 4px 7px; overflow: hidden;
+  font-size: 12px; line-height: 1.25; color: #fff; border: 0;
+  text-align: start; box-shadow: var(--schatten);
+}
+.balken b { display: block; font-weight: 700; font-size: 12.5px;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.balken small { display: block; opacity: .88; font-size: 11px; direction: ltr; }
+/* Kurze Balken zeigen nur den Titel, sonst steht die Schrift über dem Rand */
+.balken.kurz { padding: 2px 6px; display: flex; align-items: center; }
+.balken.kurz b { font-size: 11.5px; }
+.balken.kurz small { display: none; }
+/* Hohe Balken dürfen den Titel umbrechen statt ihn abzuschneiden */
+.balken.hoch b { white-space: normal; }
+.balken.fremd { opacity: .92; }
+.balken.belegt {
+  background: repeating-linear-gradient(135deg,
+    var(--flaeche3), var(--flaeche3) 6px, var(--flaeche2) 6px, var(--flaeche2) 12px);
+  color: var(--text2); border: 1px solid var(--linie2);
+}
+.balken.erledigt { opacity: .55; }
+.balken.erledigt b { text-decoration: line-through; }
+.balken.slot {
+  background: none; border: 1.5px dashed var(--linie2); color: var(--text3);
+  display: flex; align-items: center; justify-content: center; font-weight: 600;
+}
+.balken.slot:hover, .balken.slot:active { border-color: var(--gruen); color: var(--gruen); }
+
+.ohneZeit { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+.chip {
+  display: flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 99px;
+  background: var(--flaeche); border: 1px solid var(--linie); font-size: 13px;
+  color: var(--text); max-width: 100%;
+}
+.chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip small { color: var(--text3); font-size: 11.5px; white-space: nowrap; }
+.chip.erledigt small { text-decoration: none; }
+.chip.erledigt { color: var(--text3); text-decoration: line-through; }
+
+/* ---------- Liste und Aufgaben behalten die Zeilen ---------- */
 .eintrag {
   background: var(--flaeche); border: 1px solid var(--linie);
   border-inline-start: 3px solid var(--linie2);
@@ -246,8 +342,7 @@ main {
 .eintrag.faellig { border-inline-start-color: var(--rot); }
 .eintrag .zeit {
   font-variant-numeric: tabular-nums; font-size: 13px; color: var(--text2);
-  min-width: 44px; padding-top: 1px; display: flex; flex-direction: column;
-  direction: ltr;
+  min-width: 44px; padding-top: 1px; display: flex; flex-direction: column; direction: ltr;
 }
 .eintrag .zeit small { font-size: 11px; color: var(--text3); }
 .eintrag .inhalt { flex-grow: 1; min-width: 0; }
@@ -255,9 +350,7 @@ main {
   font-weight: 600; font-size: 15px;
   display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
 }
-.eintrag .unterzeile {
-  font-size: 13px; color: var(--text2); margin-top: 2px; overflow-wrap: anywhere;
-}
+.eintrag .unterzeile { font-size: 13px; color: var(--text2); margin-top: 2px; overflow-wrap: anywhere; }
 .eintrag.erledigt .titel { text-decoration: line-through; color: var(--text3); }
 
 .serieRing { font-size: 13px; color: var(--text3); font-weight: 400; }
@@ -267,7 +360,7 @@ main {
   display: inline-block; margin-top: 7px; padding: 3px 9px; border-radius: 99px;
   font-size: 12px; font-weight: 600; background: var(--flaeche2); color: var(--text2);
 }
-.marke.bald { background: var(--gelbHell); color: var(--gelb); }
+.marke.bald { background: var(--orangeHell); color: var(--orange); }
 .marke.jetzt, .marke.spaet { background: var(--rotHell); color: var(--rot); }
 .marke.gut { background: var(--gruenHell); color: var(--gruen); }
 
@@ -279,7 +372,6 @@ main {
 .haken.an { background: var(--gruen); border-color: var(--gruen); }
 .weg { background: none; border: 0; color: var(--text3); font-size: 19px; padding: 0 3px; line-height: 1; }
 
-/* Zusage-Knöpfe am Eintrag */
 .zusage { display: flex; gap: 7px; margin-top: 9px; flex-wrap: wrap; }
 .zusage button {
   padding: 6px 13px; border-radius: 9px; font-size: 13px; font-weight: 600;
@@ -288,37 +380,23 @@ main {
 .zusage button.ja.an { background: var(--gruen); border-color: var(--gruen); color: #fff; }
 .zusage button.nein.an { background: var(--rot); border-color: var(--rot); color: #fff; }
 
-/* ---------- Woche ---------- */
-.woche { display: flex; flex-direction: column; gap: 10px; }
-.wochentag { background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--rund); overflow: hidden; }
-.wochentag > .kopf {
-  display: flex; align-items: baseline; gap: 8px; padding: 9px 13px;
-  background: var(--flaeche2); font-size: 13px; font-weight: 700;
-}
-.wochentag > .kopf .num { color: var(--text2); font-weight: 500; }
-.wochentag > .kopf .heute { margin-inline-start: auto; font-size: 11px; font-weight: 700; color: var(--akzent); }
-.wochentag .zeilen { padding: 4px 0; }
-.wochentag .mini { display: flex; gap: 10px; align-items: baseline; padding: 6px 13px; font-size: 14px; }
-.wochentag .mini .z { font-variant-numeric: tabular-nums; color: var(--text2); font-size: 12px; min-width: 40px; direction: ltr; }
-.wochentag .mini.erledigt { color: var(--text3); text-decoration: line-through; }
-.wochentag .nix { padding: 8px 13px; color: var(--text3); font-size: 13px; }
-
 /* ---------- Monat ---------- */
 .monat { background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--rund); padding: 10px; }
 .monatKopf, .monatGitter { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 4px; }
 .monatKopf div { text-align: center; font-size: 11px; font-weight: 700; color: var(--text3); padding-bottom: 6px; }
 .monatZelle {
-  aspect-ratio: 1/1; border: 0; border-radius: 10px; background: none; padding: 4px 2px 2px;
+  aspect-ratio: 1/1.08; border: 0; border-radius: 10px; background: none; padding: 4px 3px 3px;
   display: flex; flex-direction: column; align-items: center; gap: 3px;
-  font-size: 13px; color: var(--text);
+  font-size: 13px; color: var(--text); overflow: hidden;
 }
 .monatZelle.fremd { color: var(--text3); opacity: .5; }
 .monatZelle.heute { background: var(--akzentHell); color: var(--akzent); font-weight: 700; }
 .monatZelle.gewaehlt { outline: 2px solid var(--akzent); }
 .monatZelle.feier { background: var(--flaeche2); }
-.monatZelle .punkte { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; }
-.monatZelle .punkt { width: 5px; height: 5px; border-radius: 50%; background: var(--akzent); }
-.monatZelle .punkt.task { background: var(--gruen); }
+.monatZelle .streifen { width: 100%; display: flex; flex-direction: column; gap: 2px; }
+.monatZelle .streifen i { display: block; height: 4px; border-radius: 2px; background: var(--akzent); }
+.monatZelle .streifen i.task { opacity: .55; }
+.monatZelle .mehr { font-size: 10px; color: var(--text3); }
 
 /* ---------- Personen und Lücken ---------- */
 .personen { display: flex; flex-wrap: wrap; gap: 7px; }
@@ -338,11 +416,11 @@ main {
 
 /* ---------- Kreise ---------- */
 .kreisKarte { background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--rund); padding: 14px; }
-.kreisKarte .kopf { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; }
+.kreisKarte .kopf { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; flex-wrap: wrap; }
 .kreisKarte .kopf b { font-size: 16px; flex-grow: 1; }
 .mitglied {
   display: flex; align-items: center; gap: 9px; padding: 7px 0;
-  font-size: 14px; border-top: 1px solid var(--linie);
+  font-size: 14px; border-top: 1px solid var(--linie); flex-wrap: wrap;
 }
 .mitglied .mail { color: var(--text3); font-size: 12px; overflow-wrap: anywhere; }
 .mitglied .rolle {
@@ -357,14 +435,15 @@ main {
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
 .einladung {
   display: flex; align-items: center; gap: 9px; padding: 7px 0;
-  font-size: 14px; border-top: 1px dashed var(--linie2); color: var(--text2);
+  font-size: 14px; border-top: 1px dashed var(--linie2); color: var(--text2); flex-wrap: wrap;
 }
-.einladung .warte { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--gelb); }
+.einladung .warte { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--orange); }
 .klein {
   padding: 5px 10px; font-size: 12px; border-radius: 8px;
   border: 1px solid var(--linie2); background: none; color: var(--text2);
 }
 .klein.gefahr { color: var(--rot); border-color: var(--rot); }
+.klein.gut { color: var(--gruen); border-color: var(--gruen); }
 .farbwahl { display: flex; gap: 7px; flex-wrap: wrap; }
 .farbe { width: 32px; height: 32px; border-radius: 50%; border: 2px solid transparent; padding: 0; }
 .farbe.an { border-color: var(--text); }
@@ -400,7 +479,7 @@ main {
 }
 dialog {
   border: 0; padding: 0; background: var(--flaeche); color: var(--text);
-  width: 100%; max-width: 520px; max-height: 92dvh;
+  width: 100%; max-width: 540px; max-height: 92dvh;
   border-radius: var(--rund2) var(--rund2) 0 0; margin: auto auto 0;
   box-shadow: var(--schatten2);
 }
@@ -412,7 +491,7 @@ dialog .dlgUnter { margin: 0 0 18px; font-size: 13px; color: var(--text2); }
 
 label { display: block; font-size: 13px; font-weight: 600; color: var(--text2); margin: 14px 0 6px; }
 input[type=text], input[type=date], input[type=time],
-input[type=email], input[type=search], textarea {
+input[type=email], input[type=search], input[type=number], textarea {
   width: 100%; padding: 11px 13px; border: 1px solid var(--linie);
   border-radius: 12px; background: var(--grund); color: var(--text);
 }
@@ -444,9 +523,16 @@ textarea { resize: vertical; min-height: 62px; }
 .hinweis { font-size: 12px; color: var(--text3); margin-top: 8px; line-height: 1.5; }
 .fehler { color: var(--rot); font-size: 13px; margin-top: 12px; }
 .gutText { color: var(--gruen); font-size: 14px; font-weight: 600; margin-top: 12px; }
-.aktionen { display: flex; gap: 9px; margin-top: 22px; }
-.aktionen .knopf { flex: 1; }
+.aktionen { display: flex; gap: 9px; margin-top: 22px; flex-wrap: wrap; }
+.aktionen .knopf { flex: 1; min-width: 120px; }
 .block { border-top: 1px solid var(--linie); margin-top: 18px; padding-top: 6px; }
+
+.zeile2 {
+  display: flex; align-items: center; gap: 9px; padding: 8px 0;
+  border-top: 1px solid var(--linie); font-size: 14px;
+}
+.zeile2 .wachs { flex-grow: 1; min-width: 0; }
+.zeile2 .wachs small { display: block; font-size: 12px; color: var(--text3); direction: ltr; }
 
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th { text-align: start; font-size: 11px; font-weight: 700; letter-spacing: .5px;
@@ -455,22 +541,37 @@ td { padding: 8px 8px 8px 0; border-top: 1px solid var(--linie); vertical-align:
 td.n { color: var(--text2); white-space: nowrap; }
 </style>
 </head>
+
 <body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<linearGradient id="mMetall" x1=".2" y1="0" x2=".8" y2="1"><stop offset="0" stop-color="#FDFEFF"/><stop offset=".45" stop-color="#C4CEDB"/><stop offset="1" stop-color="#8F9CAE"/></linearGradient>
+<linearGradient id="mGold" x1=".2" y1="0" x2=".8" y2="1"><stop offset="0" stop-color="#FFE9A3"/><stop offset=".5" stop-color="#F5B932"/><stop offset="1" stop-color="#C8860A"/></linearGradient>
+<radialGradient id="m-gruen" cx=".34" cy=".26" r=".95"><stop offset="0" stop-color="#4DF58F"/><stop offset="1" stop-color="#079A47"/></radialGradient>
+<radialGradient id="m-rot" cx=".34" cy=".26" r=".95"><stop offset="0" stop-color="#FF6076"/><stop offset="1" stop-color="#C20E2D"/></radialGradient>
+<radialGradient id="m-orange" cx=".34" cy=".26" r=".95"><stop offset="0" stop-color="#FFC154"/><stop offset="1" stop-color="#D96E00"/></radialGradient>
+<radialGradient id="m-blau" cx=".34" cy=".26" r=".95"><stop offset="0" stop-color="#5FA8FF"/><stop offset="1" stop-color="#0E4FD0"/></radialGradient>
+<radialGradient id="mUhr" cx=".34" cy=".28" r=".9"><stop offset="0" stop-color="#7FC0FF"/><stop offset=".55" stop-color="#1E7BEF"/><stop offset="1" stop-color="#0B3FA8"/></radialGradient>
+<symbol id="mark" viewBox="0 0 512 512">
+<circle cx="256" cy="256" r="248" fill="url(#mMetall)"/>
+<circle cx="256" cy="256" r="228" fill="url(#mGold)"/>
+<circle cx="256" cy="256" r="222" fill="#2E3A49"/>
+<path d="M253.4 182.0A74.0 74.0 0 0 0 182.0 253.4L38.1 248.4A218.0 218.0 0 0 1 248.4 38.1Z" fill="url(#m-gruen)"/>
+<path d="M330.0 253.4A74.0 74.0 0 0 0 258.6 182.0L263.6 38.1A218.0 218.0 0 0 1 473.9 248.4Z" fill="url(#m-rot)"/>
+<path d="M182.0 258.6A74.0 74.0 0 0 0 253.4 330.0L248.4 473.9A218.0 218.0 0 0 1 38.1 263.6Z" fill="url(#m-orange)"/>
+<path d="M258.6 330.0A74.0 74.0 0 0 0 330.0 258.6L473.9 263.6A218.0 218.0 0 0 1 263.6 473.9Z" fill="url(#m-blau)"/>
+<path d="M323.2,245.6L339.8,236.7L336.7,226.3L317.9,227.9L309.0,213.4L318.9,197.3L311.0,189.9L295.6,200.7L280.6,192.6L281.1,173.8L270.6,171.3L262.6,188.3L245.6,188.8L236.7,172.2L226.3,175.3L227.9,194.1L213.4,203.0L197.3,193.1L189.9,201.0L200.7,216.4L192.6,231.4L173.8,230.9L171.3,241.4L188.3,249.4L188.8,266.4L172.2,275.3L175.3,285.7L194.1,284.1L203.0,298.6L193.1,314.7L201.0,322.1L216.4,311.3L231.4,319.4L230.9,338.2L241.4,340.7L249.4,323.7L266.4,323.2L275.3,339.8L285.7,336.7L284.1,317.9L298.6,309.0L314.7,318.9L322.1,311.0L311.3,295.6L319.4,280.6L338.2,281.1L340.7,270.6L323.7,262.6Z" fill="url(#mGold)"/>
+<circle cx="256" cy="256" r="60" fill="#FFFFFF"/>
+<circle cx="256" cy="256" r="53" fill="url(#mUhr)"/>
+<path d="M256 256L271 230" stroke="#fff" stroke-width="9" stroke-linecap="round"/>
+<path d="M256 256L224 229" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+<circle cx="256" cy="256" r="6" fill="#FFFFFF"/>
+</symbol></defs></svg>
 
 <!-- =============== ANMELDUNG =============== -->
 <div id="loginView" class="mitte">
   <div class="karte">
-    <svg width="92" height="92" viewBox="0 0 120 120" aria-hidden="true">
-      <g fill="none" stroke-linecap="round">
-        <circle cx="60" cy="60" r="50" stroke="var(--k2)" stroke-width="7"
-                stroke-dasharray="248 66" transform="rotate(-40 60 60)"/>
-        <circle cx="60" cy="60" r="39" stroke="var(--k1)" stroke-width="8"
-                stroke-dasharray="180 65" transform="rotate(130 60 60)"/>
-        <circle cx="60" cy="60" r="29" stroke="var(--k1)" stroke-width="7"
-                stroke-dasharray="120 62" transform="rotate(-10 60 60)"/>
-        <circle cx="60" cy="60" r="17" stroke="var(--k0)" stroke-width="10"/>
-      </g>
-    </svg>
+    <svg width="96" height="96" aria-hidden="true"><use href="#mark"/></svg>
     <h1>Orbyx</h1>
     <p data-i18n="spruch"></p>
     <button class="knopf" id="loginBtn" data-i18n="anmelden"></button>
@@ -484,15 +585,7 @@ td.n { color: var(--text2); white-space: nowrap; }
 
   <header>
     <div class="marke">
-      <svg width="30" height="30" viewBox="0 0 120 120" aria-hidden="true">
-        <g fill="none" stroke-linecap="round">
-          <circle cx="60" cy="60" r="50" stroke="var(--k2)" stroke-width="9"
-                  stroke-dasharray="248 66" transform="rotate(-40 60 60)"/>
-          <circle cx="60" cy="60" r="36" stroke="var(--k1)" stroke-width="10"
-                  stroke-dasharray="165 60" transform="rotate(130 60 60)"/>
-          <circle cx="60" cy="60" r="17" stroke="var(--k0)" stroke-width="12"/>
-        </g>
-      </svg>
+      <svg width="30" height="30" aria-hidden="true"><use href="#mark"/></svg>
       <b>Orbyx</b>
     </div>
 
@@ -538,11 +631,7 @@ td.n { color: var(--text2); white-space: nowrap; }
     <button data-v="liste" data-i18n="vListe"></button>
   </nav>
 
-  <div class="filter" id="filter">
-    <button data-f="alles" class="an" data-i18n="fAlles"></button>
-    <button data-f="termin" data-i18n="fTermine"></button>
-    <button data-f="task" data-i18n="fAufgaben"></button>
-  </div>
+  <div class="filter" id="filter"></div>
 
   <div class="suchleiste versteckt" id="suchleiste">
     <input id="sucheFeld" type="search" data-i18n-ph="suchen" autocomplete="off">
@@ -561,6 +650,20 @@ td.n { color: var(--text2); white-space: nowrap; }
   <button class="plus" id="neuBtn" data-i18n-al="neuerEintrag">+</button>
 </div>
 
+<!-- =============== NAME BEIM ERSTEN MAL =============== -->
+<dialog id="dlgName">
+  <form id="formName" class="dlgInhalt">
+    <h2 data-i18n="nmTitel"></h2>
+    <p class="dlgUnter" data-i18n="nmUnter"></p>
+    <label for="nName" data-i18n="nmFeld"></label>
+    <input type="text" id="nName" required maxlength="60" data-i18n-ph="nmBsp" autocomplete="name">
+    <div id="nameFehler" class="fehler"></div>
+    <div class="aktionen">
+      <button type="submit" class="knopf" data-i18n="nmWeiter"></button>
+    </div>
+  </form>
+</dialog>
+
 <!-- =============== EINTRAG =============== -->
 <dialog id="dlgEintrag">
   <form id="formEintrag" class="dlgInhalt">
@@ -574,6 +677,11 @@ td.n { color: var(--text2); white-space: nowrap; }
     <div class="wahl klein">
       <button type="button" id="wdhEinmal" class="an" data-i18n="fEinmal"></button>
       <button type="button" id="wdhSerie" data-i18n="fSerie"></button>
+    </div>
+
+    <div id="artenBlock" class="versteckt" style="margin-top:14px">
+      <label data-i18n="kArten"></label>
+      <div class="personen" id="artenWahl"></div>
     </div>
 
     <label for="fTitel" data-i18n="fTitel"></label>
@@ -650,6 +758,12 @@ td.n { color: var(--text2); white-space: nowrap; }
         <button type="button" id="artStern" data-i18n="kArtStern"></button>
       </div>
       <p class="hinweis" data-i18n="kArtHinweis"></p>
+      <label data-i18n="kBelegung"></label>
+      <div class="wahl">
+        <button type="button" id="belParallel" class="an" data-i18n="kParallel"></button>
+        <button type="button" id="belExklusiv" data-i18n="kExklusiv"></button>
+      </div>
+      <p class="hinweis" data-i18n="kBelegungHinweis"></p>
       <label data-i18n="kFarbe"></label>
       <div class="farbwahl" id="kFarben"></div>
       <div id="kreisFehler" class="fehler"></div>
@@ -660,6 +774,60 @@ td.n { color: var(--text2); white-space: nowrap; }
     </div>
     <div class="aktionen versteckt" id="kreiseNurZu">
       <button type="button" class="knopf hell" id="kreiseZu2" data-i18n="schliessen"></button>
+    </div>
+  </div>
+</dialog>
+
+<!-- =============== KREIS EINSTELLEN =============== -->
+<dialog id="dlgKreisEinst">
+  <div class="dlgInhalt">
+    <h2 data-i18n="kEinstellungen"></h2>
+    <p class="dlgUnter" id="einstUnter"></p>
+
+    <label data-i18n="kBelegung"></label>
+    <div class="wahl">
+      <button type="button" id="eBelParallel" data-i18n="kParallel"></button>
+      <button type="button" id="eBelExklusiv" data-i18n="kExklusiv"></button>
+    </div>
+    <p class="hinweis" data-i18n="kBelegungHinweis"></p>
+
+    <div class="block">
+      <label data-i18n="kArten"></label>
+      <div id="artenListe"></div>
+      <div class="reihe" style="margin-top:8px">
+        <div style="flex:2">
+          <label for="eArtName" data-i18n="kArtName"></label>
+          <input type="text" id="eArtName" maxlength="30" data-i18n-ph="kArtNameBsp">
+        </div>
+        <div style="flex:1">
+          <label for="eArtDauer" data-i18n="kArtDauer"></label>
+          <input type="number" id="eArtDauer" min="5" max="600" step="5" value="45">
+        </div>
+      </div>
+      <button type="button" class="klein" id="artHinzu" style="margin-top:8px" data-i18n="kArtHinzu"></button>
+      <p class="hinweis" data-i18n="kArtenHinweis"></p>
+    </div>
+
+    <div class="block">
+      <label data-i18n="kZeiten"></label>
+      <div id="zeitenListe"></div>
+      <div class="tageWahl" id="eZeitTage" style="margin-top:8px"></div>
+      <div class="reihe" style="margin-top:8px">
+        <div><label for="eZeitVon" data-i18n="fVon"></label>
+             <input type="time" id="eZeitVon" value="17:00"></div>
+        <div><label for="eZeitBis" data-i18n="fBis"></label>
+             <input type="time" id="eZeitBis" value="22:00"></div>
+      </div>
+      <button type="button" class="klein" id="zeitHinzu" style="margin-top:8px" data-i18n="kZeitHinzu"></button>
+      <p class="hinweis" data-i18n="kZeitenHinweis"></p>
+    </div>
+
+    <div id="einstFehler" class="fehler"></div>
+    <div id="einstGut" class="gutText"></div>
+
+    <div class="aktionen">
+      <button type="button" class="knopf hell" id="einstZu" data-i18n="abbrechen"></button>
+      <button type="button" class="knopf" id="einstSpeichern" data-i18n="kSpeichern"></button>
     </div>
   </div>
 </dialog>
@@ -757,7 +925,10 @@ td.n { color: var(--text2); white-space: nowrap; }
 
     <div class="aktionen">
       <button type="button" class="knopf hell" id="michZu" data-i18n="schliessen"></button>
-      <button type="button" class="knopf rand" id="betriebBtn" data-i18n="bTitel"></button>
+      <button type="button" class="knopf rand" id="nameBtn" data-i18n="nmAendern"></button>
+    </div>
+    <div class="aktionen" style="margin-top:9px">
+      <button type="button" class="knopf rand versteckt" id="betriebBtn" data-i18n="bTitel"></button>
       <button type="button" class="knopf rand" id="logoutBtn" data-i18n="koAbmelden"></button>
     </div>
   </div>
