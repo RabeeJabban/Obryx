@@ -105,6 +105,17 @@ de: {
           "Mehr musst du nicht tun.",
   eiNochNicht: "Lade erst jemanden ein.",
 
+
+  // ---- Aktualisieren ----
+  akAktualisieren: "Aktualisieren",
+  akAktuell: "Du hast die neueste Fassung ({fassung}).\n\nTrotzdem alles neu laden?",
+  akNeu: "Es gibt eine neuere Fassung.\n\nDu hast {alt}, auf dem Server liegt {neu}.\n\n" +
+         "Jetzt aktualisieren?",
+  akUnbekannt: "Die App neu laden und alle zwischengespeicherten Dateien verwerfen?",
+  akLaeuft: "Wird neu geladen …",
+  akFassung: "Fassung {fassung}",
+  akKeine: "noch nicht gespeichert",
+
   // Marke
   spruch: "Ordnung für alles, was gleichzeitig läuft.",
   anmelden: "Mit Google anmelden",
@@ -414,6 +425,15 @@ ar: {
           "سجّل الدخول هناك ببريد {mail}، وعندها تصبح في دائرة «{kreis}». " +
           "لا شيء آخر عليك فعله.",
   eiNochNicht: "ادعُ شخصاً أولاً.",
+
+
+  akAktualisieren: "تحديث",
+  akAktuell: "لديك أحدث إصدار ({fassung}).\n\nهل تريد إعادة التحميل مع ذلك؟",
+  akNeu: "يتوفر إصدار أحدث.\n\nلديك {alt}، وعلى الخادم {neu}.\n\nهل تريد التحديث الآن؟",
+  akUnbekannt: "إعادة تحميل التطبيق وحذف كل الملفات المخزَّنة مؤقتاً؟",
+  akLaeuft: "جارٍ إعادة التحميل …",
+  akFassung: "الإصدار {fassung}",
+  akKeine: "غير محفوظ بعد",
 
   spruch: "تنظيم لكل ما يجري في وقت واحد.",
   anmelden: "تسجيل الدخول عبر Google",
