@@ -1,230 +1,200 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" dir="ltr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Sawa</title>
+  <title>Orbyx</title>
 
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon-192.png">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="Sawa">
-  <meta name="theme-color" content="#FFFCF7" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#12110F" media="(prefers-color-scheme: dark)">
-  <meta name="description" content="Termine und Aufgaben, die zusammenpassen.">
+  <meta name="apple-mobile-web-app-title" content="Orbyx">
+  <meta name="theme-color" content="#F7F8FA" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0E1420" media="(prefers-color-scheme: dark)">
+  <meta name="description" content="Orbyx – organize your chaos">
 
 <style>
 /* ===================================================================
-   FARBEN
-   Die Palette kommt aus dem Icon: zehn Kreise, jeder in einer Farbe.
-   Dieselben zehn Farben bekommen später die Kreise in der App, damit
-   Zeichen und Oberfläche dieselbe Sprache sprechen.
+   ORBYX · FARBEN
+   Die Palette kommt aus dem Logo: Bernstein, Grün, Blau auf Tinte.
+   Dieselben Farben bekommen die Kreise in der App.
    =================================================================== */
 :root {
   color-scheme: light dark;
 
-  --grund:      #FFFCF7;
-  --flaeche:    #FFFFFF;
-  --flaeche2:   #F6F1E8;
-  --linie:      #E7DFD3;
-  --linie2:     #D6CBBA;
-  --text:       #1C1A17;
-  --text2:      #6B6259;
-  --text3:      #9A9188;
+  --grund:    #F7F8FA;
+  --flaeche:  #FFFFFF;
+  --flaeche2: #EEF1F5;
+  --linie:    #DFE4EB;
+  --linie2:   #C6CEDA;
+  --text:     #16233A;
+  --text2:    #5C6880;
+  --text3:    #8C96A8;
 
-  --akzent:     #C4552E;
-  --akzentHell: #FBEDE7;
-  --gruen:      #26887B;
-  --gruenHell:  #E2F0ED;
-  --rot:        #B23A2B;
-  --rotHell:    #FAE6E2;
-  --warn:       #8A5207;
-  --warnHell:   #FBEDD6;
+  --blau:      #1B65C9;
+  --blauHell:  #E4EDFB;
+  --gruen:     #219447;
+  --gruenHell: #E2F3E8;
+  --gelb:      #B8820F;
+  --gelbHell:  #FBF0D8;
+  --rot:       #C0392B;
+  --rotHell:   #FBE7E4;
 
-  --k0: #D4533B; --k1: #DB8121; --k2: #C9A227; --k3: #8CA524; --k4: #3F9E5E;
-  --k5: #2E9E8F; --k6: #3480B0; --k7: #4C63C4; --k8: #8A54C0; --k9: #C24A8E;
+  --akzent:     var(--blau);
+  --akzentHell: var(--blauHell);
 
-  --schatten:  0 1px 2px rgba(28,26,23,.05);
-  --schatten2: 0 8px 28px rgba(28,26,23,.14);
-  --rund:  14px;
-  --rund2: 20px;
+  /* Kreisfarben, aus dem Logo abgeleitet */
+  --k0:#1B65C9; --k1:#219447; --k2:#D9A21B; --k3:#C0392B; --k4:#7A4FC4;
+  --k5:#0F8E96; --k6:#D2691E; --k7:#C2417F; --k8:#4A6572; --k9:#5C8A1E;
+
+  --schatten:  0 1px 2px rgba(22,35,58,.06);
+  --schatten2: 0 10px 34px rgba(22,35,58,.18);
+  --rund: 14px; --rund2: 20px;
   --unten: env(safe-area-inset-bottom, 0px);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --grund:      #12110F;
-    --flaeche:    #1C1A17;
-    --flaeche2:   #262320;
-    --linie:      #302C27;
-    --linie2:     #453F38;
-    --text:       #F2EDE4;
-    --text2:      #A59B8E;
-    --text3:      #756D63;
+    --grund:    #0E1420;
+    --flaeche:  #172033;
+    --flaeche2: #1F2B42;
+    --linie:    #26334A;
+    --linie2:   #3A4A66;
+    --text:     #E8EDF5;
+    --text2:    #9AA7BF;
+    --text3:    #6B7890;
 
-    --akzent:     #F0785A;
-    --akzentHell: #331B14;
-    --gruen:      #4FC2B2;
-    --gruenHell:  #10322E;
-    --rot:        #F0776A;
-    --rotHell:    #351A17;
-    --warn:       #E5B25F;
-    --warnHell:   #332510;
+    --blau:      #5B9BF0;
+    --blauHell:  #14263F;
+    --gruen:     #4CC271;
+    --gruenHell: #102D1C;
+    --gelb:      #E8B944;
+    --gelbHell:  #2E2410;
+    --rot:       #F0776A;
+    --rotHell:   #331A17;
 
-    --k0: #F0705A; --k1: #F5A03F; --k2: #EBC943; --k3: #AACF3E; --k4: #4FD184;
-    --k5: #3FD1BE; --k6: #54ADE0; --k7: #7A90F0; --k8: #B87DF0; --k9: #F06BB8;
+    --k0:#5B9BF0; --k1:#4CC271; --k2:#E8B944; --k3:#F0776A; --k4:#A98BF0;
+    --k5:#3FC4CE; --k6:#F0964A; --k7:#EC7AB4; --k8:#8FA3B8; --k9:#9BC94A;
 
-    --schatten:  0 1px 2px rgba(0,0,0,.4);
-    --schatten2: 0 8px 28px rgba(0,0,0,.6);
+    --schatten:  0 1px 2px rgba(0,0,0,.5);
+    --schatten2: 0 10px 34px rgba(0,0,0,.65);
   }
 }
 
 /* ===================================================================
    GRUNDLAGEN
+   Alles benutzt logische Richtungen (inline-start statt left),
+   damit Arabisch von rechts nach links ohne Sonderregeln läuft.
    =================================================================== */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
 html, body { height: 100%; }
-
 body {
   margin: 0;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  font-size: 16px;
-  line-height: 1.45;
-  background: var(--grund);
-  color: var(--text);
+  font-size: 16px; line-height: 1.45;
+  background: var(--grund); color: var(--text);
   overscroll-behavior-y: none;
 }
+[dir="rtl"] body { font-family: system-ui, "Segoe UI", Tahoma, Arial, sans-serif; }
 
 button, input, textarea, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 .versteckt { display: none !important; }
+:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
 
-:focus-visible {
-  outline: 2px solid var(--akzent);
-  outline-offset: 2px;
-}
+/* Zahlen und Zeiten immer von links nach rechts, auch im Arabischen */
+.ltr { direction: ltr; unicode-bidi: isolate; }
 
-/* ===================================================================
-   ANMELDUNG
-   =================================================================== */
+/* ---------- Anmeldung ---------- */
 .mitte {
-  min-height: 100dvh;
-  display: flex; align-items: center; justify-content: center;
-  padding: 16px;
+  min-height: 100dvh; display: flex;
+  align-items: center; justify-content: center; padding: 16px;
 }
 .karte {
-  background: var(--flaeche);
-  border: 1px solid var(--linie);
-  border-radius: var(--rund2);
-  box-shadow: var(--schatten);
-  padding: 40px 28px;
-  width: 100%; max-width: 380px;
-  text-align: center;
+  background: var(--flaeche); border: 1px solid var(--linie);
+  border-radius: var(--rund2); box-shadow: var(--schatten);
+  padding: 42px 28px; width: 100%; max-width: 390px; text-align: center;
 }
 .karte h1 {
-  margin: 18px 0 2px;
-  font-size: 30px; font-weight: 700; letter-spacing: -.5px;
+  margin: 20px 0 2px; font-size: 32px; font-weight: 700; letter-spacing: -.8px;
 }
-.karte .arab { color: var(--text3); font-size: 15px; margin-bottom: 4px; }
-.karte p { margin: 0 0 26px; color: var(--text2); font-size: 14px; }
+.karte p { margin: 6px 0 26px; color: var(--text2); font-size: 14px; }
+.sprachwahl { display: flex; gap: 8px; justify-content: center; margin-top: 18px; }
+.sprachwahl button {
+  padding: 7px 14px; border-radius: 99px; font-size: 13px; font-weight: 600;
+  border: 1px solid var(--linie); background: none; color: var(--text2);
+}
+.sprachwahl button.an { background: var(--akzent); border-color: var(--akzent); color: #fff; }
 
 .knopf {
-  width: 100%;
-  padding: 13px 18px;
-  border: 0; border-radius: 12px;
-  background: var(--akzent); color: #fff;
-  font-size: 15px; font-weight: 600;
+  width: 100%; padding: 13px 18px; border: 0; border-radius: 12px;
+  background: var(--akzent); color: #fff; font-size: 15px; font-weight: 600;
 }
-.knopf.hell    { background: var(--flaeche2); color: var(--text); }
-.knopf.rand    { background: none; color: var(--text2); border: 1px solid var(--linie2); }
-.knopf.gefahr  { background: none; color: var(--rot); border: 1px solid var(--rot); }
-.knopf:active  { transform: translateY(1px); }
+.knopf.hell   { background: var(--flaeche2); color: var(--text); }
+.knopf.rand   { background: none; color: var(--text2); border: 1px solid var(--linie2); }
+.knopf:active { transform: translateY(1px); }
 .knopf:disabled { opacity: .45; }
 
-/* ===================================================================
-   KOPFZEILE
-   =================================================================== */
+/* ---------- Kopfzeile ---------- */
 header {
   position: sticky; top: 0; z-index: 40;
   background: color-mix(in srgb, var(--grund) 88%, transparent);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--linie);
-  padding: 10px 14px;
-  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; display: flex; align-items: center; gap: 8px;
 }
 header .marke { display: flex; align-items: center; gap: 9px; flex-grow: 1; min-width: 0; }
-header .marke b { font-size: 18px; letter-spacing: -.3px; }
+header .marke b { font-size: 19px; letter-spacing: -.4px; }
 
 .rundknopf {
-  width: 38px; height: 38px; flex-shrink: 0;
-  border-radius: 11px; padding: 0;
-  border: 1px solid var(--linie);
-  background: var(--flaeche);
+  width: 38px; height: 38px; flex-shrink: 0; border-radius: 11px; padding: 0;
+  border: 1px solid var(--linie); background: var(--flaeche); color: var(--text2);
   display: flex; align-items: center; justify-content: center;
-  color: var(--text2);
 }
-.rundknopf.an { background: var(--akzent); border-color: var(--akzent); color: #fff; }
 .rundknopf img { width: 100%; height: 100%; border-radius: 10px; object-fit: cover; }
-
-/* ===================================================================
-   NAVIGATION
-   =================================================================== */
-nav.ansichten {
-  display: flex; gap: 4px;
-  padding: 10px 14px 0;
-  overflow-x: auto;
-  scrollbar-width: none;
+/* Ohne Profilbild steht im Knopf der erste Buchstabe des Namens */
+.rundknopf[data-kuerzel]:not([data-kuerzel=""])::after {
+  content: attr(data-kuerzel); font-size: 15px; font-weight: 700; color: var(--text2);
 }
-nav.ansichten::-webkit-scrollbar { display: none; }
-nav.ansichten button {
-  flex: 1 0 auto;
-  padding: 8px 16px;
-  border: 0; border-radius: 99px;
-  background: none; color: var(--text2);
-  font-size: 14px; font-weight: 600;
-  white-space: nowrap;
-}
-nav.ansichten button.an { background: var(--flaeche2); color: var(--text); }
-
-/* Filter: Termine oder Aufgaben */
-.filter {
-  display: flex; gap: 6px;
-  padding: 8px 14px 0;
-  max-width: 900px; margin: 0 auto;
-}
-.filter button {
-  flex: 1;
-  padding: 7px 10px;
-  border: 1px solid var(--linie); border-radius: 10px;
-  background: var(--flaeche); color: var(--text2);
-  font-size: 13px; font-weight: 600;
-}
-.filter button.an {
-  background: var(--akzentHell);
-  border-color: var(--akzent);
-  color: var(--akzent);
-}
-
-/* Zähler an der Glocke */
 .zaehler {
-  position: absolute; top: -5px; right: -5px;
-  min-width: 19px; height: 19px; padding: 0 5px;
-  border-radius: 99px;
-  background: var(--akzent); color: #fff;
-  font-size: 11px; font-weight: 700;
+  position: absolute; top: -5px; inset-inline-end: -5px;
+  min-width: 19px; height: 19px; padding: 0 5px; border-radius: 99px;
+  background: var(--rot); color: #fff; font-size: 11px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
   border: 2px solid var(--grund);
 }
 
-/* ===================================================================
-   ZEITLEISTE (Datum blättern)
-   =================================================================== */
+/* ---------- Ansichten und Filter ---------- */
+nav.ansichten {
+  display: flex; gap: 4px; padding: 10px 14px 0;
+  overflow-x: auto; scrollbar-width: none;
+  max-width: 980px; margin: 0 auto;
+}
+nav.ansichten::-webkit-scrollbar { display: none; }
+nav.ansichten button {
+  flex: 1 0 auto; padding: 8px 11px; border: 0; border-radius: 99px;
+  background: none; color: var(--text2);
+  font-size: 14px; font-weight: 600; white-space: nowrap;
+}
+@media (min-width: 420px) { nav.ansichten button { padding: 8px 16px; } }
+nav.ansichten button.an { background: var(--flaeche2); color: var(--text); }
+
+.filter {
+  display: flex; gap: 6px; padding: 8px 14px 0;
+  max-width: 980px; margin: 0 auto;
+}
+.filter button {
+  flex: 1; padding: 7px 10px; border: 1px solid var(--linie); border-radius: 10px;
+  background: var(--flaeche); color: var(--text2); font-size: 13px; font-weight: 600;
+}
+.filter button.an { background: var(--akzentHell); border-color: var(--akzent); color: var(--akzent); }
+
+/* ---------- Zeitleiste ---------- */
 .zeitleiste {
   display: flex; align-items: center; gap: 8px;
-  padding: 12px 14px 8px;
+  padding: 12px 14px 8px; max-width: 980px; margin: 0 auto;
 }
 .zeitleiste .mitteBlock { flex-grow: 1; min-width: 0; }
 .zeitleiste b { display: block; font-size: 19px; letter-spacing: -.3px; }
@@ -233,74 +203,51 @@ nav.ansichten button.an { background: var(--flaeche2); color: var(--text); }
   display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
 }
 .pfeil {
-  width: 38px; height: 38px; flex-shrink: 0;
-  border-radius: 11px; padding: 0;
-  border: 1px solid var(--linie);
-  background: var(--flaeche); color: var(--text2);
+  width: 38px; height: 38px; flex-shrink: 0; border-radius: 11px; padding: 0;
+  border: 1px solid var(--linie); background: var(--flaeche); color: var(--text2);
   font-size: 18px; line-height: 1;
 }
-
 .tagMarke {
-  display: inline-block;
-  padding: 2px 8px; border-radius: 99px;
-  font-size: 11px; font-weight: 700;
-  background: var(--flaeche2); color: var(--text2);
+  display: inline-block; padding: 2px 8px; border-radius: 99px;
+  font-size: 11px; font-weight: 700; background: var(--flaeche2); color: var(--text2);
 }
 .tagMarke.frei { background: var(--gruenHell); color: var(--gruen); }
 
-/* ===================================================================
-   SUCHE
-   =================================================================== */
-.suchleiste { padding: 10px 14px 0; display: flex; gap: 8px; }
+/* ---------- Suche ---------- */
+.suchleiste { padding: 10px 14px 0; display: flex; gap: 8px; max-width: 980px; margin: 0 auto; }
 .suchleiste input {
-  flex-grow: 1;
-  padding: 11px 14px;
-  border: 1px solid var(--linie); border-radius: 12px;
-  background: var(--flaeche);
+  flex-grow: 1; padding: 11px 14px;
+  border: 1px solid var(--linie); border-radius: 12px; background: var(--flaeche);
 }
 
-/* ===================================================================
-   LISTE
-   =================================================================== */
+/* ---------- Liste ---------- */
 main {
   padding: 8px 14px calc(120px + var(--unten));
   display: flex; flex-direction: column; gap: 8px;
-  max-width: 900px; margin: 0 auto;
+  max-width: 980px; margin: 0 auto;
 }
-
-.leer {
-  color: var(--text2); font-size: 14px;
-  text-align: center; padding: 48px 20px;
-}
-.leer .gross { font-size: 34px; margin-bottom: 10px; opacity: .5; }
+.leer { color: var(--text2); font-size: 14px; text-align: center; padding: 48px 20px; }
+.leer .gross { font-size: 34px; margin-bottom: 10px; opacity: .45; }
 
 .trenner {
-  font-size: 11px; font-weight: 700;
-  letter-spacing: .8px; text-transform: uppercase;
-  color: var(--text3);
-  margin: 16px 0 2px;
+  font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
+  color: var(--text3); margin: 16px 0 2px;
   display: flex; align-items: center; gap: 8px;
 }
 .trenner.warn { color: var(--rot); }
-.trenner::after {
-  content: ""; flex-grow: 1; height: 1px; background: var(--linie);
-}
+.trenner::after { content: ""; flex-grow: 1; height: 1px; background: var(--linie); }
 
 .eintrag {
-  background: var(--flaeche);
-  border: 1px solid var(--linie);
-  border-left: 3px solid var(--linie2);
-  border-radius: var(--rund);
-  box-shadow: var(--schatten);
-  padding: 12px 14px;
-  display: flex; gap: 12px; align-items: flex-start;
+  background: var(--flaeche); border: 1px solid var(--linie);
+  border-inline-start: 3px solid var(--linie2);
+  border-radius: var(--rund); box-shadow: var(--schatten);
+  padding: 12px 14px; display: flex; gap: 12px; align-items: flex-start;
 }
-.eintrag.faellig { border-left-color: var(--rot); }
+.eintrag.faellig { border-inline-start-color: var(--rot); }
 .eintrag .zeit {
-  font-variant-numeric: tabular-nums;
-  font-size: 13px; color: var(--text2);
-  min-width: 44px; padding-top: 1px;
-  display: flex; flex-direction: column;
+  font-variant-numeric: tabular-nums; font-size: 13px; color: var(--text2);
+  min-width: 44px; padding-top: 1px; display: flex; flex-direction: column;
+  direction: ltr;
 }
 .eintrag .zeit small { font-size: 11px; color: var(--text3); }
 .eintrag .inhalt { flex-grow: 1; min-width: 0; }
@@ -309,97 +256,59 @@ main {
   display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
 }
 .eintrag .unterzeile {
-  font-size: 13px; color: var(--text2); margin-top: 2px;
-  overflow-wrap: anywhere;
+  font-size: 13px; color: var(--text2); margin-top: 2px; overflow-wrap: anywhere;
 }
 .eintrag.erledigt .titel { text-decoration: line-through; color: var(--text3); }
 
 .serieRing { font-size: 13px; color: var(--text3); font-weight: 400; }
-
-.kreisPunkt {
-  width: 9px; height: 9px; border-radius: 50%;
-  flex-shrink: 0; display: inline-block;
-}
+.kreisPunkt { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
 
 .marke {
-  display: inline-block; margin-top: 7px;
-  padding: 3px 9px; border-radius: 99px;
-  font-size: 12px; font-weight: 600;
-  background: var(--flaeche2); color: var(--text2);
+  display: inline-block; margin-top: 7px; padding: 3px 9px; border-radius: 99px;
+  font-size: 12px; font-weight: 600; background: var(--flaeche2); color: var(--text2);
 }
-.marke.bald  { background: var(--warnHell); color: var(--warn); }
+.marke.bald { background: var(--gelbHell); color: var(--gelb); }
 .marke.jetzt, .marke.spaet { background: var(--rotHell); color: var(--rot); }
-.marke.geteilt { background: var(--gruenHell); color: var(--gruen); }
+.marke.gut { background: var(--gruenHell); color: var(--gruen); }
 
 .haken {
-  width: 26px; height: 26px; flex-shrink: 0;
-  border-radius: 8px; padding: 0;
-  border: 2px solid var(--linie2);
-  background: var(--flaeche);
-  display: flex; align-items: center; justify-content: center;
-  color: #fff; font-size: 15px;
+  width: 26px; height: 26px; flex-shrink: 0; border-radius: 8px; padding: 0;
+  border: 2px solid var(--linie2); background: var(--flaeche);
+  display: flex; align-items: center; justify-content: center; color: #fff; font-size: 15px;
 }
 .haken.an { background: var(--gruen); border-color: var(--gruen); }
+.weg { background: none; border: 0; color: var(--text3); font-size: 19px; padding: 0 3px; line-height: 1; }
 
-.weg {
-  background: none; border: 0; color: var(--text3);
-  font-size: 19px; padding: 0 3px; line-height: 1;
+/* Zusage-Knöpfe am Eintrag */
+.zusage { display: flex; gap: 7px; margin-top: 9px; flex-wrap: wrap; }
+.zusage button {
+  padding: 6px 13px; border-radius: 9px; font-size: 13px; font-weight: 600;
+  border: 1px solid var(--linie2); background: none; color: var(--text2);
 }
+.zusage button.ja.an { background: var(--gruen); border-color: var(--gruen); color: #fff; }
+.zusage button.nein.an { background: var(--rot); border-color: var(--rot); color: #fff; }
 
-/* ===================================================================
-   WOCHE
-   =================================================================== */
+/* ---------- Woche ---------- */
 .woche { display: flex; flex-direction: column; gap: 10px; }
-.wochentag {
-  background: var(--flaeche);
-  border: 1px solid var(--linie);
-  border-radius: var(--rund);
-  overflow: hidden;
-}
+.wochentag { background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--rund); overflow: hidden; }
 .wochentag > .kopf {
-  display: flex; align-items: baseline; gap: 8px;
-  padding: 9px 13px;
-  background: var(--flaeche2);
-  font-size: 13px; font-weight: 700;
+  display: flex; align-items: baseline; gap: 8px; padding: 9px 13px;
+  background: var(--flaeche2); font-size: 13px; font-weight: 700;
 }
 .wochentag > .kopf .num { color: var(--text2); font-weight: 500; }
-.wochentag > .kopf .heute {
-  margin-left: auto;
-  font-size: 11px; font-weight: 700;
-  color: var(--akzent);
-}
+.wochentag > .kopf .heute { margin-inline-start: auto; font-size: 11px; font-weight: 700; color: var(--akzent); }
 .wochentag .zeilen { padding: 4px 0; }
-.wochentag .mini {
-  display: flex; gap: 10px; align-items: baseline;
-  padding: 6px 13px; font-size: 14px;
-}
-.wochentag .mini .z {
-  font-variant-numeric: tabular-nums;
-  color: var(--text2); font-size: 12px; min-width: 40px;
-}
+.wochentag .mini { display: flex; gap: 10px; align-items: baseline; padding: 6px 13px; font-size: 14px; }
+.wochentag .mini .z { font-variant-numeric: tabular-nums; color: var(--text2); font-size: 12px; min-width: 40px; direction: ltr; }
 .wochentag .mini.erledigt { color: var(--text3); text-decoration: line-through; }
 .wochentag .nix { padding: 8px 13px; color: var(--text3); font-size: 13px; }
 
-/* ===================================================================
-   MONAT
-   =================================================================== */
-.monat {
-  background: var(--flaeche);
-  border: 1px solid var(--linie);
-  border-radius: var(--rund);
-  padding: 10px;
-}
-.monatKopf, .monatGitter {
-  display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px;
-}
-.monatKopf div {
-  text-align: center; font-size: 11px; font-weight: 700;
-  color: var(--text3); padding-bottom: 6px;
-}
+/* ---------- Monat ---------- */
+.monat { background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--rund); padding: 10px; }
+.monatKopf, .monatGitter { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 4px; }
+.monatKopf div { text-align: center; font-size: 11px; font-weight: 700; color: var(--text3); padding-bottom: 6px; }
 .monatZelle {
-  aspect-ratio: 1 / 1;
-  border: 0; border-radius: 10px;
-  background: none; padding: 4px 2px 2px;
+  aspect-ratio: 1/1; border: 0; border-radius: 10px; background: none; padding: 4px 2px 2px;
   display: flex; flex-direction: column; align-items: center; gap: 3px;
   font-size: 13px; color: var(--text);
 }
@@ -408,112 +317,104 @@ main {
 .monatZelle.gewaehlt { outline: 2px solid var(--akzent); }
 .monatZelle.feier { background: var(--flaeche2); }
 .monatZelle .punkte { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; }
-.monatZelle .punkt {
-  width: 5px; height: 5px; border-radius: 50%;
-  background: var(--akzent);
-}
+.monatZelle .punkt { width: 5px; height: 5px; border-radius: 50%; background: var(--akzent); }
 .monatZelle .punkt.task { background: var(--gruen); }
 
-/* ===================================================================
-   TERMINFINDUNG
-   =================================================================== */
+/* ---------- Personen und Lücken ---------- */
 .personen { display: flex; flex-wrap: wrap; gap: 7px; }
 .person {
-  padding: 8px 13px; border-radius: 99px;
-  border: 1px solid var(--linie2);
-  background: var(--flaeche); color: var(--text2);
-  font-size: 14px; font-weight: 600;
+  padding: 8px 13px; border-radius: 99px; border: 1px solid var(--linie2);
+  background: var(--flaeche); color: var(--text2); font-size: 14px; font-weight: 600;
   display: flex; align-items: center; gap: 7px;
 }
 .person.an { background: var(--gruen); border-color: var(--gruen); color: #fff; }
 
 .luecke {
   display: flex; align-items: center; gap: 12px;
-  background: var(--gruenHell);
-  border: 1px solid transparent;
-  border-radius: var(--rund);
-  padding: 12px 14px;
+  background: var(--gruenHell); border-radius: var(--rund); padding: 12px 14px;
 }
-.luecke b { font-variant-numeric: tabular-nums; color: var(--gruen); }
+.luecke b { font-variant-numeric: tabular-nums; color: var(--gruen); direction: ltr; }
 .luecke .dauer { font-size: 13px; color: var(--text2); flex-grow: 1; }
 
-/* ===================================================================
-   KREISE
-   =================================================================== */
-.kreisKarte {
-  background: var(--flaeche);
-  border: 1px solid var(--linie);
-  border-radius: var(--rund);
-  padding: 14px;
-}
-.kreisKarte .kopf {
-  display: flex; align-items: center; gap: 9px; margin-bottom: 8px;
-}
+/* ---------- Kreise ---------- */
+.kreisKarte { background: var(--flaeche); border: 1px solid var(--linie); border-radius: var(--rund); padding: 14px; }
+.kreisKarte .kopf { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; }
 .kreisKarte .kopf b { font-size: 16px; flex-grow: 1; }
 .mitglied {
-  display: flex; align-items: center; gap: 9px;
-  padding: 7px 0; font-size: 14px;
-  border-top: 1px solid var(--linie);
+  display: flex; align-items: center; gap: 9px; padding: 7px 0;
+  font-size: 14px; border-top: 1px solid var(--linie);
 }
-.mitglied .mail { color: var(--text3); font-size: 12px; }
+.mitglied .mail { color: var(--text3); font-size: 12px; overflow-wrap: anywhere; }
 .mitglied .rolle {
-  margin-left: auto; font-size: 11px; font-weight: 700;
-  color: var(--text3); text-transform: uppercase; letter-spacing: .5px;
+  font-size: 11px; font-weight: 700; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .5px;
 }
 .avatar {
-  width: 30px; height: 30px; border-radius: 50%;
-  background: var(--flaeche2); flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700; color: var(--text2);
-  overflow: hidden;
+  width: 30px; height: 30px; border-radius: 50%; background: var(--flaeche2);
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: var(--text2); overflow: hidden;
 }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
-
-.farbwahl { display: flex; gap: 7px; flex-wrap: wrap; }
-.farbe {
-  width: 32px; height: 32px; border-radius: 50%;
-  border: 2px solid transparent; padding: 0;
+.einladung {
+  display: flex; align-items: center; gap: 9px; padding: 7px 0;
+  font-size: 14px; border-top: 1px dashed var(--linie2); color: var(--text2);
 }
+.einladung .warte { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--gelb); }
+.klein {
+  padding: 5px 10px; font-size: 12px; border-radius: 8px;
+  border: 1px solid var(--linie2); background: none; color: var(--text2);
+}
+.klein.gefahr { color: var(--rot); border-color: var(--rot); }
+.farbwahl { display: flex; gap: 7px; flex-wrap: wrap; }
+.farbe { width: 32px; height: 32px; border-radius: 50%; border: 2px solid transparent; padding: 0; }
 .farbe.an { border-color: var(--text); }
 
-/* ===================================================================
-   FORMULAR
-   =================================================================== */
-.plus {
-  position: fixed; z-index: 45;
-  right: 16px; bottom: calc(16px + var(--unten));
-  width: 58px; height: 58px; border-radius: 50%;
-  border: 0; background: var(--akzent); color: #fff;
-  font-size: 30px; line-height: 1;
-  box-shadow: var(--schatten2);
+/* ---------- Dashboard ---------- */
+.kacheln { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px,1fr)); gap: 8px; }
+.kachel { background: var(--flaeche2); border-radius: 12px; padding: 12px 10px; text-align: center; }
+.kachel b { display: block; font-size: 22px; letter-spacing: -.5px; direction: ltr; }
+.kachel span { font-size: 12px; color: var(--text2); }
+.kachel.warn b { color: var(--rot); }
+
+/* ---------- Nachrichten ---------- */
+.post {
+  background: var(--flaeche); border: 1px solid var(--linie);
+  border-inline-start: 3px solid var(--linie2); border-radius: var(--rund); padding: 12px 14px;
+}
+.post.neu { border-inline-start-color: var(--akzent); background: var(--akzentHell); }
+.post .von { font-size: 13px; font-weight: 700; }
+.post .wann { font-size: 12px; color: var(--text3); }
+.post .text { margin-top: 5px; font-size: 14px; overflow-wrap: anywhere; }
+.post .knoepfe { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.post .knoepfe button {
+  padding: 6px 12px; font-size: 13px; border-radius: 9px;
+  border: 1px solid var(--linie2); background: none; color: var(--text2);
 }
 
+/* ---------- Formular ---------- */
+.plus {
+  position: fixed; z-index: 45; inset-inline-end: 16px; bottom: calc(16px + var(--unten));
+  width: 58px; height: 58px; border-radius: 50%; border: 0;
+  background: var(--akzent); color: #fff; font-size: 30px; line-height: 1;
+  box-shadow: var(--schatten2);
+}
 dialog {
-  border: 0; padding: 0;
-  background: var(--flaeche); color: var(--text);
-  width: 100%; max-width: 520px;
-  max-height: 92dvh;
-  border-radius: var(--rund2) var(--rund2) 0 0;
-  margin: auto auto 0;
+  border: 0; padding: 0; background: var(--flaeche); color: var(--text);
+  width: 100%; max-width: 520px; max-height: 92dvh;
+  border-radius: var(--rund2) var(--rund2) 0 0; margin: auto auto 0;
   box-shadow: var(--schatten2);
 }
 dialog::backdrop { background: rgba(0,0,0,.45); }
-@media (min-width: 560px) {
-  dialog { border-radius: var(--rund2); margin: auto; }
-}
+@media (min-width: 560px) { dialog { border-radius: var(--rund2); margin: auto; } }
 .dlgInhalt { padding: 20px 18px calc(20px + var(--unten)); overflow-y: auto; max-height: 92dvh; }
 dialog h2 { margin: 0 0 4px; font-size: 20px; letter-spacing: -.3px; }
 dialog .dlgUnter { margin: 0 0 18px; font-size: 13px; color: var(--text2); }
 
-label {
-  display: block; font-size: 13px; font-weight: 600;
-  color: var(--text2); margin: 14px 0 6px;
-}
+label { display: block; font-size: 13px; font-weight: 600; color: var(--text2); margin: 14px 0 6px; }
 input[type=text], input[type=date], input[type=time],
 input[type=email], input[type=search], textarea {
-  width: 100%; padding: 11px 13px;
-  border: 1px solid var(--linie); border-radius: 12px;
-  background: var(--grund); color: var(--text);
+  width: 100%; padding: 11px 13px; border: 1px solid var(--linie);
+  border-radius: 12px; background: var(--grund); color: var(--text);
 }
 textarea { resize: vertical; min-height: 62px; }
 .reihe { display: flex; gap: 10px; }
@@ -521,104 +422,35 @@ textarea { resize: vertical; min-height: 62px; }
 
 .wahl { display: flex; gap: 7px; }
 .wahl button {
-  flex: 1; padding: 11px 8px;
-  border: 1px solid var(--linie); border-radius: 12px;
-  background: var(--grund); color: var(--text2);
-  font-size: 14px; font-weight: 600;
+  flex: 1; padding: 11px 8px; border: 1px solid var(--linie); border-radius: 12px;
+  background: var(--grund); color: var(--text2); font-size: 14px; font-weight: 600;
 }
 .wahl button.an { background: var(--akzent); border-color: var(--akzent); color: #fff; }
 .wahl.klein { margin-top: 12px; }
 
 .tageWahl { display: flex; gap: 5px; }
 .tagKnopf {
-  flex: 1; padding: 10px 0;
-  border: 1px solid var(--linie); border-radius: 10px;
-  background: var(--grund); color: var(--text2);
-  font-size: 13px; font-weight: 600;
+  flex: 1; padding: 10px 0; border: 1px solid var(--linie); border-radius: 10px;
+  background: var(--grund); color: var(--text2); font-size: 13px; font-weight: 600;
 }
 .tagKnopf.an { background: var(--gruen); border-color: var(--gruen); color: #fff; }
 
 .schalter {
-  display: flex; align-items: center; gap: 11px;
-  margin: 12px 0 0; font-size: 14px; font-weight: 400;
-  color: var(--text); cursor: pointer;
+  display: flex; align-items: center; gap: 11px; margin: 12px 0 0;
+  font-size: 14px; font-weight: 400; color: var(--text); cursor: pointer;
 }
-.schalter input {
-  width: 21px; height: 21px; flex-shrink: 0; margin: 0;
-  accent-color: var(--gruen);
-}
+.schalter input { width: 21px; height: 21px; flex-shrink: 0; margin: 0; accent-color: var(--gruen); }
 
-.hinweis {
-  font-size: 12px; color: var(--text3);
-  margin-top: 8px; line-height: 1.5;
-}
+.hinweis { font-size: 12px; color: var(--text3); margin-top: 8px; line-height: 1.5; }
 .fehler { color: var(--rot); font-size: 13px; margin-top: 12px; }
-.gut { color: var(--gruen); font-size: 14px; font-weight: 600; margin-top: 12px; }
-
+.gutText { color: var(--gruen); font-size: 14px; font-weight: 600; margin-top: 12px; }
 .aktionen { display: flex; gap: 9px; margin-top: 22px; }
 .aktionen .knopf { flex: 1; }
+.block { border-top: 1px solid var(--linie); margin-top: 18px; padding-top: 6px; }
 
-/* Abschnitt im Formular */
-.block {
-  border-top: 1px solid var(--linie);
-  margin-top: 18px; padding-top: 6px;
-}
-
-/* Kacheln im Dashboard */
-.kacheln {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
-  gap: 8px;
-}
-.kachel {
-  background: var(--flaeche2);
-  border-radius: 12px; padding: 12px 10px;
-  text-align: center;
-}
-.kachel b { display: block; font-size: 22px; letter-spacing: -.5px; }
-.kachel span { font-size: 12px; color: var(--text2); }
-
-/* Nachricht im Posteingang */
-.post {
-  background: var(--flaeche);
-  border: 1px solid var(--linie);
-  border-left: 3px solid var(--linie2);
-  border-radius: var(--rund);
-  padding: 12px 14px;
-}
-.post.neu { border-left-color: var(--akzent); background: var(--akzentHell); }
-.post .von { font-size: 13px; font-weight: 700; }
-.post .wann { font-size: 12px; color: var(--text3); }
-.post .text { margin-top: 5px; font-size: 14px; overflow-wrap: anywhere; }
-.post .knoepfe { display: flex; gap: 8px; margin-top: 10px; }
-.post .knoepfe button {
-  padding: 6px 12px; font-size: 13px; border-radius: 9px;
-  border: 1px solid var(--linie2); background: none; color: var(--text2);
-}
-
-/* Offene Einladung */
-.einladung {
-  display: flex; align-items: center; gap: 9px;
-  padding: 7px 0; font-size: 14px;
-  border-top: 1px dashed var(--linie2);
-  color: var(--text2);
-}
-.einladung .warte {
-  margin-left: auto; font-size: 11px; font-weight: 700;
-  text-transform: uppercase; letter-spacing: .5px; color: var(--warn);
-}
-.klein {
-  padding: 5px 10px; font-size: 12px; border-radius: 8px;
-  border: 1px solid var(--linie2); background: none; color: var(--text2);
-}
-.klein.gefahr { color: var(--rot); border-color: var(--rot); }
-
-/* Tabelle im Dashboard */
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th {
-  text-align: left; font-size: 11px; font-weight: 700;
-  letter-spacing: .5px; text-transform: uppercase;
-  color: var(--text3); padding: 0 8px 8px 0;
-}
+th { text-align: start; font-size: 11px; font-weight: 700; letter-spacing: .5px;
+     text-transform: uppercase; color: var(--text3); padding: 0 8px 8px 0; }
 td { padding: 8px 8px 8px 0; border-top: 1px solid var(--linie); vertical-align: top; }
 td.n { color: var(--text2); white-space: nowrap; }
 </style>
@@ -628,22 +460,22 @@ td.n { color: var(--text2); white-space: nowrap; }
 <!-- =============== ANMELDUNG =============== -->
 <div id="loginView" class="mitte">
   <div class="karte">
-    <svg width="84" height="84" viewBox="0 0 120 120" aria-hidden="true">
-      <g fill="none" stroke-width="3.4">
-        <circle cx="47" cy="45" r="27" stroke="var(--k0)"/>
-        <circle cx="76" cy="42" r="22" stroke="var(--k1)"/>
-        <circle cx="85" cy="70" r="30" stroke="var(--k2)"/>
-        <circle cx="58" cy="62" r="33" stroke="var(--k4)"/>
-        <circle cx="40" cy="78" r="24" stroke="var(--k5)"/>
-        <circle cx="68" cy="88" r="20" stroke="var(--k6)"/>
-        <circle cx="62" cy="55" r="17" stroke="var(--k7)"/>
+    <svg width="92" height="92" viewBox="0 0 120 120" aria-hidden="true">
+      <g fill="none" stroke-linecap="round">
+        <circle cx="60" cy="60" r="50" stroke="var(--k2)" stroke-width="7"
+                stroke-dasharray="248 66" transform="rotate(-40 60 60)"/>
+        <circle cx="60" cy="60" r="39" stroke="var(--k1)" stroke-width="8"
+                stroke-dasharray="180 65" transform="rotate(130 60 60)"/>
+        <circle cx="60" cy="60" r="29" stroke="var(--k1)" stroke-width="7"
+                stroke-dasharray="120 62" transform="rotate(-10 60 60)"/>
+        <circle cx="60" cy="60" r="17" stroke="var(--k0)" stroke-width="10"/>
       </g>
     </svg>
-    <h1>Sawa</h1>
-    <div class="arab">سوا · zusammen</div>
-    <p>Termine und Aufgaben, die zusammenpassen.</p>
-    <button class="knopf" id="loginBtn">Mit Google anmelden</button>
+    <h1>Orbyx</h1>
+    <p data-i18n="spruch"></p>
+    <button class="knopf" id="loginBtn" data-i18n="anmelden"></button>
     <div id="loginFehler" class="fehler"></div>
+    <div class="sprachwahl" id="sprachwahl"></div>
   </div>
 </div>
 
@@ -652,168 +484,152 @@ td.n { color: var(--text2); white-space: nowrap; }
 
   <header>
     <div class="marke">
-      <svg width="28" height="28" viewBox="0 0 120 120" aria-hidden="true">
-        <g fill="none" stroke-width="6">
-          <circle cx="50" cy="48" r="26" stroke="var(--k0)"/>
-          <circle cx="76" cy="60" r="30" stroke="var(--k5)"/>
-          <circle cx="48" cy="76" r="24" stroke="var(--k7)"/>
+      <svg width="30" height="30" viewBox="0 0 120 120" aria-hidden="true">
+        <g fill="none" stroke-linecap="round">
+          <circle cx="60" cy="60" r="50" stroke="var(--k2)" stroke-width="9"
+                  stroke-dasharray="248 66" transform="rotate(-40 60 60)"/>
+          <circle cx="60" cy="60" r="36" stroke="var(--k1)" stroke-width="10"
+                  stroke-dasharray="165 60" transform="rotate(130 60 60)"/>
+          <circle cx="60" cy="60" r="17" stroke="var(--k0)" stroke-width="12"/>
         </g>
       </svg>
-      <b>Sawa</b>
+      <b>Orbyx</b>
     </div>
 
-    <button class="rundknopf" id="sucheBtn" aria-label="Suchen">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-           stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <button class="rundknopf" id="sucheBtn" data-i18n-al="suchen">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round">
         <circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path>
       </svg>
     </button>
 
-    <button class="rundknopf" id="findenBtn" aria-label="Termin finden">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-           stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <button class="rundknopf" id="findenBtn" data-i18n-al="terminFinden">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round">
         <circle cx="9" cy="8" r="3.2"></circle>
         <path d="M3 19c0-3.2 2.7-5 6-5s6 1.8 6 5"></path>
         <path d="M17 6v6M20 9h-6"></path>
       </svg>
     </button>
 
-    <button class="rundknopf" id="kreiseBtn" aria-label="Kreise">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-           stroke="currentColor" stroke-width="2">
+    <button class="rundknopf" id="kreiseBtn" data-i18n-al="kreise">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="9" cy="12" r="6"></circle><circle cx="15" cy="12" r="6"></circle>
       </svg>
     </button>
 
-    <button class="rundknopf" id="postBtn" aria-label="Nachrichten"
-            style="position:relative">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-           stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <button class="rundknopf" id="postBtn" data-i18n-al="nachrichten" style="position:relative">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round">
         <path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7"></path>
         <path d="M10.5 20a2 2 0 0 0 3 0"></path>
       </svg>
       <span class="zaehler versteckt" id="postZahl">0</span>
     </button>
 
-    <button class="rundknopf" id="michBtn" aria-label="Mein Konto">
-      <img id="photo" alt="">
-    </button>
+    <button class="rundknopf" id="michBtn" data-i18n-al="konto"><img id="photo" alt=""></button>
   </header>
 
   <nav class="ansichten" id="nav">
-    <button data-v="tag" class="an">Tag</button>
-    <button data-v="woche">Woche</button>
-    <button data-v="monat">Monat</button>
-    <button data-v="aufgaben">Aufgaben</button>
-    <button data-v="liste">Liste</button>
+    <button data-v="tag" class="an" data-i18n="vTag"></button>
+    <button data-v="woche" data-i18n="vWoche"></button>
+    <button data-v="monat" data-i18n="vMonat"></button>
+    <button data-v="aufgaben" data-i18n="vAufgaben"></button>
+    <button data-v="liste" data-i18n="vListe"></button>
   </nav>
 
   <div class="filter" id="filter">
-    <button data-f="alles" class="an">Alles</button>
-    <button data-f="termin">Nur Termine</button>
-    <button data-f="task">Nur Aufgaben</button>
+    <button data-f="alles" class="an" data-i18n="fAlles"></button>
+    <button data-f="termin" data-i18n="fTermine"></button>
+    <button data-f="task" data-i18n="fAufgaben"></button>
   </div>
 
   <div class="suchleiste versteckt" id="suchleiste">
-    <input id="sucheFeld" type="search" placeholder="Titel, Notiz oder Ort suchen" autocomplete="off">
-    <button class="rundknopf" id="sucheZu" aria-label="Suche schließen">&#10005;</button>
+    <input id="sucheFeld" type="search" data-i18n-ph="suchen" autocomplete="off">
+    <button class="rundknopf" id="sucheZu" data-i18n-al="schliessen">&#10005;</button>
   </div>
 
   <div class="zeitleiste" id="zeitleiste">
-    <button class="pfeil" id="zurueck" aria-label="Zurück">&#8249;</button>
-    <div class="mitteBlock">
-      <b id="zeitTitel"></b>
-      <div class="unter" id="zeitUnter"></div>
-    </div>
-    <button class="pfeil" id="heuteBtn" aria-label="Heute">&#9679;</button>
-    <button class="pfeil" id="vor" aria-label="Weiter">&#8250;</button>
+    <button class="pfeil" id="zurueck" data-i18n-al="zurueck">&#8249;</button>
+    <div class="mitteBlock"><b id="zeitTitel"></b><div class="unter" id="zeitUnter"></div></div>
+    <button class="pfeil" id="heuteBtn" data-i18n-al="heute">&#9679;</button>
+    <button class="pfeil" id="vor" data-i18n-al="weiter">&#8250;</button>
   </div>
 
   <main id="buehne"></main>
 
-  <button class="plus" id="neuBtn" aria-label="Neuer Eintrag">+</button>
+  <button class="plus" id="neuBtn" data-i18n-al="neuerEintrag">+</button>
 </div>
 
 <!-- =============== EINTRAG =============== -->
 <dialog id="dlgEintrag">
   <form id="formEintrag" class="dlgInhalt">
-    <h2 id="dlgTitel">Neuer Eintrag</h2>
-    <p class="dlgUnter" id="dlgUnter">Was steht an?</p>
+    <h2 id="dlgTitel"></h2>
+    <p class="dlgUnter" id="dlgUnter"></p>
 
     <div class="wahl">
-      <button type="button" id="typTermin" class="an">Termin</button>
-      <button type="button" id="typTask">Aufgabe</button>
+      <button type="button" id="typTermin" class="an" data-i18n="fTermin"></button>
+      <button type="button" id="typTask" data-i18n="fAufgabe"></button>
     </div>
-
     <div class="wahl klein">
-      <button type="button" id="wdhEinmal" class="an">Einmal</button>
-      <button type="button" id="wdhSerie">Wiederholt sich</button>
+      <button type="button" id="wdhEinmal" class="an" data-i18n="fEinmal"></button>
+      <button type="button" id="wdhSerie" data-i18n="fSerie"></button>
     </div>
 
-    <label for="fTitel">Titel</label>
-    <input type="text" id="fTitel" required maxlength="120"
-           placeholder="Zahnarzt, Einkaufen, Vorlesung">
+    <label for="fTitel" data-i18n="fTitel"></label>
+    <input type="text" id="fTitel" required maxlength="120" data-i18n-ph="fTitelBsp">
 
-    <label for="fDatum" id="lblDatum">Datum</label>
+    <label for="fDatum" id="lblDatum"></label>
     <input type="date" id="fDatum" required>
 
     <div class="reihe">
-      <div>
-        <label for="fStart" id="lblStart">Von</label>
-        <input type="time" id="fStart">
-      </div>
-      <div id="endeFeld">
-        <label for="fEnde">Bis</label>
-        <input type="time" id="fEnde">
-      </div>
+      <div><label for="fStart" id="lblStart"></label><input type="time" id="fStart"></div>
+      <div id="endeFeld"><label for="fEnde" data-i18n="fBis"></label><input type="time" id="fEnde"></div>
     </div>
 
     <div id="serieFeld" class="versteckt block">
-      <label>An welchen Wochentagen</label>
+      <label data-i18n="fWochentage"></label>
       <div class="tageWahl" id="tageWahl"></div>
-
-      <label for="fBis">Bis einschließlich</label>
+      <label for="fBis" data-i18n="fBisEinschl"></label>
       <input type="date" id="fBis">
-
       <label class="schalter" for="fFeiertage">
-        <input type="checkbox" id="fFeiertage" checked>
-        An Feiertagen aussetzen
+        <input type="checkbox" id="fFeiertage" checked><span data-i18n="fOhneFeiertage"></span>
       </label>
       <label class="schalter" for="fFerien">
-        <input type="checkbox" id="fFerien">
-        In den Schulferien aussetzen
+        <input type="checkbox" id="fFerien"><span data-i18n="fOhneFerien"></span>
       </label>
-      <p class="hinweis">Feiertage und Ferien gelten für Nordrhein-Westfalen.</p>
+      <p class="hinweis" data-i18n="fNrw"></p>
     </div>
 
     <div id="fristFeld" class="versteckt">
-      <label for="fFrist">Frist (optional)</label>
+      <label for="fFrist" data-i18n="fFrist"></label>
       <input type="date" id="fFrist">
     </div>
 
-    <label for="fOrt">Ort (optional)</label>
-    <input type="text" id="fOrt" maxlength="120" placeholder="MG, Düsseldorf, Online">
+    <label for="fOrt" data-i18n="fOrt"></label>
+    <input type="text" id="fOrt" maxlength="120" data-i18n-ph="fOrtBsp">
 
-    <label for="fNotiz">Notiz</label>
-    <textarea id="fNotiz" maxlength="500" placeholder="Optional"></textarea>
+    <label for="fNotiz" data-i18n="fNotiz"></label>
+    <textarea id="fNotiz" maxlength="500" data-i18n-ph="fOptional"></textarea>
 
     <div class="block" id="teilenBlock">
-      <label>Mit welchen Kreisen teilen</label>
+      <label data-i18n="fTeilen"></label>
       <div class="personen" id="teilenWahl"></div>
-      <p class="hinweis">
-        Ohne Auswahl sieht nur du den Eintrag. Deine Kreise sehen immer,
-        dass die Zeit belegt ist, aber nur bei geteilten Einträgen auch womit.
-      </p>
+      <p class="hinweis" data-i18n="fTeilenHinweis"></p>
+    </div>
+
+    <div class="block versteckt" id="zuweisenBlock">
+      <label data-i18n="fZuweisen"></label>
+      <div class="personen" id="zuweisenWahl"></div>
+      <p class="hinweis" data-i18n="fZuweisenHinweis"></p>
     </div>
 
     <div id="formFehler" class="fehler"></div>
-
-    <button type="button" class="knopf rand versteckt" id="absagenBtn"
-            style="margin-top:16px">Diesen Tag absagen</button>
+    <button type="button" class="knopf rand versteckt" id="absagenBtn" style="margin-top:16px"></button>
 
     <div class="aktionen">
-      <button type="button" class="knopf hell" id="abbrechen">Abbrechen</button>
-      <button type="submit" class="knopf">Speichern</button>
+      <button type="button" class="knopf hell" id="abbrechen" data-i18n="abbrechen"></button>
+      <button type="submit" class="knopf" data-i18n="speichern"></button>
     </div>
   </form>
 </dialog>
@@ -821,24 +637,29 @@ td.n { color: var(--text2); white-space: nowrap; }
 <!-- =============== KREISE =============== -->
 <dialog id="dlgKreise">
   <div class="dlgInhalt">
-    <h2>Kreise</h2>
-    <p class="dlgUnter">
-      Ein Kreis ist eine Gruppe, die füreinander sichtbar ist. Familie,
-      Arbeit, Freunde. Jeder kann in mehreren Kreisen sein.
-    </p>
-
+    <h2 data-i18n="kTitel"></h2>
+    <p class="dlgUnter" data-i18n="kUnter"></p>
     <div id="kreisListe" style="display:flex;flex-direction:column;gap:12px"></div>
 
-    <div class="block">
-      <label for="kName">Neuen Kreis anlegen</label>
-      <input type="text" id="kName" maxlength="40" placeholder="Familie, Arbeit, …">
-      <label>Farbe</label>
+    <div class="block" id="neuerKreisBlock">
+      <label for="kName" data-i18n="kNeuer"></label>
+      <input type="text" id="kName" maxlength="40" data-i18n-ph="kNameBsp">
+      <label data-i18n="kArt"></label>
+      <div class="wahl">
+        <button type="button" id="artKreis" class="an" data-i18n="kArtKreis"></button>
+        <button type="button" id="artStern" data-i18n="kArtStern"></button>
+      </div>
+      <p class="hinweis" data-i18n="kArtHinweis"></p>
+      <label data-i18n="kFarbe"></label>
       <div class="farbwahl" id="kFarben"></div>
       <div id="kreisFehler" class="fehler"></div>
       <div class="aktionen">
-        <button type="button" class="knopf hell" id="kreiseZu">Schließen</button>
-        <button type="button" class="knopf" id="kreisAnlegen">Anlegen</button>
+        <button type="button" class="knopf hell" id="kreiseZu" data-i18n="schliessen"></button>
+        <button type="button" class="knopf" id="kreisAnlegen" data-i18n="kAnlegen"></button>
       </div>
+    </div>
+    <div class="aktionen versteckt" id="kreiseNurZu">
+      <button type="button" class="knopf hell" id="kreiseZu2" data-i18n="schliessen"></button>
     </div>
   </div>
 </dialog>
@@ -846,23 +667,19 @@ td.n { color: var(--text2); white-space: nowrap; }
 <!-- =============== EINLADEN =============== -->
 <dialog id="dlgEinladen">
   <form id="formEinladen" class="dlgInhalt">
-    <h2>Einladen</h2>
+    <h2 data-i18n="eiTitel"></h2>
     <p class="dlgUnter" id="einladenUnter"></p>
-    <label for="eMail">E-Mail-Adresse</label>
-    <input type="email" id="eMail" required placeholder="name@gmail.com">
+    <label for="eMail" data-i18n="eiMail"></label>
+    <input type="email" id="eMail" required placeholder="name@mail.com">
     <label class="schalter" for="eVerwalter">
-      <input type="checkbox" id="eVerwalter">
-      Darf selbst Leute in diesen Kreis einladen
+      <input type="checkbox" id="eVerwalter"><span data-i18n="eiAlsVerwalter"></span>
     </label>
-    <p class="hinweis">
-      Die Person muss sich mit genau dieser Adresse bei Sawa anmelden.
-      Beim nächsten Öffnen ist sie im Kreis.
-    </p>
+    <p class="hinweis" data-i18n="eiHinweis"></p>
     <div id="einladenFehler" class="fehler"></div>
-    <div id="einladenGut" class="gut"></div>
+    <div id="einladenGut" class="gutText"></div>
     <div class="aktionen">
-      <button type="button" class="knopf hell" id="einladenZu">Schließen</button>
-      <button type="submit" class="knopf">Einladen</button>
+      <button type="button" class="knopf hell" id="einladenZu" data-i18n="schliessen"></button>
+      <button type="submit" class="knopf" data-i18n="eiSenden"></button>
     </div>
   </form>
 </dialog>
@@ -870,43 +687,25 @@ td.n { color: var(--text2); white-space: nowrap; }
 <!-- =============== TERMIN FINDEN =============== -->
 <dialog id="dlgFinden">
   <div class="dlgInhalt">
-    <h2>Termin finden</h2>
-    <p class="dlgUnter">Zeigt die Zeitfenster, in denen alle Ausgewählten frei sind.</p>
-
-    <label>Mit wem</label>
+    <h2 data-i18n="tfTitel"></h2>
+    <p class="dlgUnter" data-i18n="tfUnter"></p>
+    <label data-i18n="tfMitWem"></label>
     <div class="personen" id="findenPersonen"></div>
-
     <div class="reihe" style="margin-top:6px">
-      <div>
-        <label for="fvVon">Von</label>
-        <input type="date" id="fvVon">
-      </div>
-      <div>
-        <label for="fvBis">Bis</label>
-        <input type="date" id="fvBis">
-      </div>
+      <div><label for="fvVon" data-i18n="tfVon"></label><input type="date" id="fvVon"></div>
+      <div><label for="fvBis" data-i18n="tfBis"></label><input type="date" id="fvBis"></div>
     </div>
-
     <div class="reihe">
-      <div>
-        <label for="fvFrueh">Frühestens</label>
-        <input type="time" id="fvFrueh" value="08:00">
-      </div>
-      <div>
-        <label for="fvSpaet">Spätestens</label>
-        <input type="time" id="fvSpaet" value="22:00">
-      </div>
+      <div><label for="fvFrueh" data-i18n="tfFrueh"></label><input type="time" id="fvFrueh" value="08:00"></div>
+      <div><label for="fvSpaet" data-i18n="tfSpaet"></label><input type="time" id="fvSpaet" value="22:00"></div>
     </div>
-
-    <label for="fvDauer">Mindestdauer</label>
+    <label data-i18n="tfDauer"></label>
     <div class="wahl" id="fvDauerWahl"></div>
-
     <div id="findenFehler" class="fehler"></div>
     <div id="findenErgebnis" style="margin-top:16px;display:flex;flex-direction:column;gap:8px"></div>
-
     <div class="aktionen">
-      <button type="button" class="knopf hell" id="findenZu">Schließen</button>
-      <button type="button" class="knopf" id="findenStart">Freie Zeiten suchen</button>
+      <button type="button" class="knopf hell" id="findenZu" data-i18n="schliessen"></button>
+      <button type="button" class="knopf" id="findenStart" data-i18n="tfSuchen"></button>
     </div>
   </div>
 </dialog>
@@ -914,14 +713,12 @@ td.n { color: var(--text2); white-space: nowrap; }
 <!-- =============== POSTEINGANG =============== -->
 <dialog id="dlgPost">
   <div class="dlgInhalt">
-    <h2>Nachrichten</h2>
-    <p class="dlgUnter">Was andere dir geschickt oder mit dir geteilt haben.</p>
-
+    <h2 data-i18n="nTitel"></h2>
+    <p class="dlgUnter" data-i18n="nUnter"></p>
     <div id="postListe" style="display:flex;flex-direction:column;gap:9px"></div>
-
     <div class="aktionen">
-      <button type="button" class="knopf hell" id="postZu">Schließen</button>
-      <button type="button" class="knopf rand" id="postGelesen">Alle gelesen</button>
+      <button type="button" class="knopf hell" id="postZu" data-i18n="schliessen"></button>
+      <button type="button" class="knopf rand" id="postGelesen" data-i18n="nAlleGelesen"></button>
     </div>
   </div>
 </dialog>
@@ -929,54 +726,66 @@ td.n { color: var(--text2); white-space: nowrap; }
 <!-- =============== NACHRICHT SCHREIBEN =============== -->
 <dialog id="dlgSchreiben">
   <form id="formSchreiben" class="dlgInhalt">
-    <h2>Nachricht schreiben</h2>
+    <h2 data-i18n="sTitel"></h2>
     <p class="dlgUnter" id="schreibenAn"></p>
-    <label for="sText">Text</label>
-    <textarea id="sText" required maxlength="800" placeholder="Worum geht es?"></textarea>
+    <label for="sText" data-i18n="sText"></label>
+    <textarea id="sText" required maxlength="800" data-i18n-ph="sTextBsp"></textarea>
     <div id="schreibenFehler" class="fehler"></div>
-    <div id="schreibenGut" class="gut"></div>
+    <div id="schreibenGut" class="gutText"></div>
     <div class="aktionen">
-      <button type="button" class="knopf hell" id="schreibenZu">Abbrechen</button>
-      <button type="submit" class="knopf">Senden</button>
+      <button type="button" class="knopf hell" id="schreibenZu" data-i18n="abbrechen"></button>
+      <button type="submit" class="knopf" data-i18n="sSenden"></button>
     </div>
   </form>
 </dialog>
 
-<!-- =============== KONTO / DASHBOARD =============== -->
+<!-- =============== KONTO =============== -->
 <dialog id="dlgMich">
   <div class="dlgInhalt">
-    <h2 id="michName">Mein Konto</h2>
+    <h2 id="michName"></h2>
     <p class="dlgUnter" id="michMail"></p>
 
     <div class="block">
-      <label>Deine Zahlen</label>
+      <label data-i18n="koSprache"></label>
+      <div class="sprachwahl" id="sprachwahl2" style="justify-content:flex-start"></div>
+    </div>
+
+    <div class="block">
+      <label data-i18n="koZahlen"></label>
       <div class="kacheln" id="meineZahlen"></div>
     </div>
 
-    <div id="adminBlock" class="versteckt">
-      <div class="block">
-        <label>Überblick</label>
-        <div class="kacheln" id="adminZahlen"></div>
-      </div>
+    <div class="aktionen">
+      <button type="button" class="knopf hell" id="michZu" data-i18n="schliessen"></button>
+      <button type="button" class="knopf rand" id="betriebBtn" data-i18n="bTitel"></button>
+      <button type="button" class="knopf rand" id="logoutBtn" data-i18n="koAbmelden"></button>
+    </div>
+  </div>
+</dialog>
 
-      <div class="block">
-        <label>Wer nutzt Sawa</label>
-        <div style="overflow-x:auto">
-          <table id="adminTabelle"></table>
-        </div>
-      </div>
+<!-- =============== BETRIEB =============== -->
+<dialog id="dlgBetrieb">
+  <div class="dlgInhalt">
+    <h2 data-i18n="bTitel"></h2>
+    <p class="dlgUnter" data-i18n="bUnter"></p>
 
-      <div class="block">
-        <label>Alle Kreise</label>
-        <div id="adminKreise" style="display:flex;flex-direction:column;gap:8px"></div>
-      </div>
+    <div class="kacheln" id="betriebZahlen"></div>
 
-      <p class="hinweis" id="adminHinweis"></p>
+    <div class="block">
+      <label data-i18n="bKonten"></label>
+      <div style="overflow-x:auto"><table id="betriebTabelle"></table></div>
     </div>
 
+    <div class="block">
+      <label data-i18n="bAlleKreise"></label>
+      <div id="betriebKreise" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
+    <p class="hinweis" data-i18n="bHinweis"></p>
+    <p class="hinweis" id="betriebFehler"></p>
+
     <div class="aktionen">
-      <button type="button" class="knopf hell" id="michZu">Schließen</button>
-      <button type="button" class="knopf rand" id="logoutBtn">Abmelden</button>
+      <button type="button" class="knopf hell" id="betriebZu" data-i18n="schliessen"></button>
     </div>
   </div>
 </dialog>
