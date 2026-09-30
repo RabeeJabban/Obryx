@@ -14,7 +14,7 @@
  * sonst sehen Handys weiter die alte Fassung.
  */
 
-const VERSION = "sawa-4";
+const VERSION = "sawa-5";
 const DATEIEN = [
   "./",
   "./index.html",
