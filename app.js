@@ -2911,6 +2911,7 @@ $("michBtn").addEventListener("click", () => {
   $("michName").textContent = meinName();
   $("betriebBtn").classList.toggle("versteckt", !istBetreiber());
   $("dlgMich").showModal();
+  zeigeFassung();
 });
 $("michZu").addEventListener("click", () => $("dlgMich").close());
 
@@ -3064,6 +3065,81 @@ async function ladeBetrieb() {
   } catch (e) {
     $("betriebFehler").textContent = t("bFehler", { code: e.code || e.message });
   }
+}
+
+/* ===================================================================
+   AKTUALISIEREN
+   Ein Tipp auf das Symbol oben links. Die App fragt den Service Worker,
+   welche Fassung eingebaut ist, holt sich frisch vom Server, welche dort
+   liegt, und vergleicht. Das nimmt die häufigste Verwirrung bei
+   Web-Apps raus: man sieht die alte Fassung und weiß nicht warum.
+   =================================================================== */
+
+/* Was ist hier installiert? Fragt den Service Worker selbst,
+   damit die Zahl nur an einer Stelle steht. */
+function fassungLokal() {
+  return new Promise((fertig) => {
+    const sw = navigator.serviceWorker;
+    if (!sw || !sw.controller) { fertig(null); return; }
+    const kanal = new MessageChannel();
+    const uhr = setTimeout(() => fertig(null), 1500);
+    kanal.port1.onmessage = (ev) => {
+      clearTimeout(uhr);
+      fertig((ev.data && ev.data.fassung) || null);
+    };
+    try { sw.controller.postMessage("fassung", [kanal.port2]); }
+    catch (e) { clearTimeout(uhr); fertig(null); }
+  });
+}
+
+/* Was liegt auf dem Server? Die Anhängsel-Frage umgeht den
+   Zwischenspeicher, sonst bekäme man wieder die alte Antwort. */
+async function fassungServer() {
+  try {
+    const antwort = await fetch("sw.js?frisch=" + Date.now(), { cache: "no-store" });
+    const text = await antwort.text();
+    const treffer = text.match(/VERSION\s*=\s*"([^"]+)"/);
+    return treffer ? treffer[1] : null;
+  } catch (e) { return null; }
+}
+
+async function alleSpeicherLeeren() {
+  try {
+    if (window.caches) {
+      const namen = await caches.keys();
+      await Promise.all(namen.map((n) => caches.delete(n)));
+    }
+    if (navigator.serviceWorker) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+  } catch (e) { console.warn("Speicher leeren:", e); }
+}
+
+$("markeBtn").addEventListener("click", async () => {
+  const knopf = $("markeBtn");
+  knopf.classList.add("dreht");
+  const [lokal, server] = await Promise.all([fassungLokal(), fassungServer()]);
+  knopf.classList.remove("dreht");
+
+  let frage;
+  if (!lokal) frage = t("akUnbekannt");
+  else if (server && server !== lokal) frage = t("akNeu", { alt: lokal, neu: server });
+  else frage = t("akAktuell", { fassung: lokal });
+
+  if (!confirm(frage)) return;
+  knopf.classList.add("dreht");
+  await alleSpeicherLeeren();
+  location.reload();
+});
+
+/* Im Konto steht die Fassung auch ohne Tippen, das hilft beim Suchen,
+   wenn zwei Geräte sich unterschiedlich verhalten. */
+async function zeigeFassung() {
+  const feld = $("fassungText");
+  if (!feld) return;
+  const lokal = await fassungLokal();
+  feld.textContent = t("akFassung", { fassung: lokal || t("akKeine") });
 }
 
 /* ===================================================================
