@@ -1,4 +1,4 @@
-/* Sawa – Service Worker
+/* Orbyx – Service Worker
  *
  * Aufgabe: die App startet auch ohne Netz und laesst sich auf dem
  * Homescreen installieren.
@@ -10,15 +10,17 @@
  *     aktuell sein, und Firestore bringt seinen eigenen Zwischenspeicher
  *     mit.
  *
- * Nach jeder Aenderung an den Dateien die Zahl in VERSION erhoehen,
- * sonst sehen Handys weiter die alte Fassung.
+ * WICHTIG: Nach JEDER Aenderung an index.html, app.js oder i18n.js die
+ * Zahl in VERSION erhoehen. Sonst zeigen schon installierte Handys
+ * weiter die alte Fassung, egal was auf dem Server liegt.
  */
 
-const VERSION = "sawa-5";
+const VERSION = "orbyx-1";
 const DATEIEN = [
   "./",
   "./index.html",
   "./app.js",
+  "./i18n.js",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
