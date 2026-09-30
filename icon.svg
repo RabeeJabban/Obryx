@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="512" height="512"
+     role="img" aria-label="Orbyx">
+  <title>Orbyx</title>
+  <!-- Konzentrische Bahnen, jede mit einer Lücke: Kreise, die sich bewegen.
+       Die Farben kommen aus dem Logo: Bernstein außen, Grün in der Mitte,
+       Blau im Kern. -->
+  <g fill="none" stroke-linecap="round">
+    <circle cx="60" cy="60" r="50" stroke="#F2B22E" stroke-width="7"
+            stroke-dasharray="248 66" transform="rotate(-40 60 60)"/>
+    <circle cx="60" cy="60" r="39" stroke="#2FA84F" stroke-width="8"
+            stroke-dasharray="180 65" transform="rotate(130 60 60)"/>
+    <circle cx="60" cy="60" r="29" stroke="#2FA84F" stroke-width="7"
+            stroke-dasharray="120 62" transform="rotate(-10 60 60)"/>
+    <circle cx="60" cy="60" r="17" stroke="#1B65C9" stroke-width="10"/>
+  </g>
+</svg>
