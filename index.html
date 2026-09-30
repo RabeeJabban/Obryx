@@ -189,6 +189,36 @@ nav.ansichten button {
 }
 nav.ansichten button.an { background: var(--flaeche2); color: var(--text); }
 
+/* Filter: Termine oder Aufgaben */
+.filter {
+  display: flex; gap: 6px;
+  padding: 8px 14px 0;
+  max-width: 900px; margin: 0 auto;
+}
+.filter button {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid var(--linie); border-radius: 10px;
+  background: var(--flaeche); color: var(--text2);
+  font-size: 13px; font-weight: 600;
+}
+.filter button.an {
+  background: var(--akzentHell);
+  border-color: var(--akzent);
+  color: var(--akzent);
+}
+
+/* Zähler an der Glocke */
+.zaehler {
+  position: absolute; top: -5px; right: -5px;
+  min-width: 19px; height: 19px; padding: 0 5px;
+  border-radius: 99px;
+  background: var(--akzent); color: #fff;
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--grund);
+}
+
 /* ===================================================================
    ZEITLEISTE (Datum blättern)
    =================================================================== */
@@ -534,6 +564,54 @@ textarea { resize: vertical; min-height: 62px; }
   margin-top: 18px; padding-top: 6px;
 }
 
+/* Kacheln im Dashboard */
+.kacheln {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
+}
+.kachel {
+  background: var(--flaeche2);
+  border-radius: 12px; padding: 12px 10px;
+  text-align: center;
+}
+.kachel b { display: block; font-size: 22px; letter-spacing: -.5px; }
+.kachel span { font-size: 12px; color: var(--text2); }
+
+/* Nachricht im Posteingang */
+.post {
+  background: var(--flaeche);
+  border: 1px solid var(--linie);
+  border-left: 3px solid var(--linie2);
+  border-radius: var(--rund);
+  padding: 12px 14px;
+}
+.post.neu { border-left-color: var(--akzent); background: var(--akzentHell); }
+.post .von { font-size: 13px; font-weight: 700; }
+.post .wann { font-size: 12px; color: var(--text3); }
+.post .text { margin-top: 5px; font-size: 14px; overflow-wrap: anywhere; }
+.post .knoepfe { display: flex; gap: 8px; margin-top: 10px; }
+.post .knoepfe button {
+  padding: 6px 12px; font-size: 13px; border-radius: 9px;
+  border: 1px solid var(--linie2); background: none; color: var(--text2);
+}
+
+/* Offene Einladung */
+.einladung {
+  display: flex; align-items: center; gap: 9px;
+  padding: 7px 0; font-size: 14px;
+  border-top: 1px dashed var(--linie2);
+  color: var(--text2);
+}
+.einladung .warte {
+  margin-left: auto; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .5px; color: var(--warn);
+}
+.klein {
+  padding: 5px 10px; font-size: 12px; border-radius: 8px;
+  border: 1px solid var(--linie2); background: none; color: var(--text2);
+}
+.klein.gefahr { color: var(--rot); border-color: var(--rot); }
+
 /* Tabelle im Dashboard */
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th {
@@ -607,6 +685,16 @@ td.n { color: var(--text2); white-space: nowrap; }
       </svg>
     </button>
 
+    <button class="rundknopf" id="postBtn" aria-label="Nachrichten"
+            style="position:relative">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7"></path>
+        <path d="M10.5 20a2 2 0 0 0 3 0"></path>
+      </svg>
+      <span class="zaehler versteckt" id="postZahl">0</span>
+    </button>
+
     <button class="rundknopf" id="michBtn" aria-label="Mein Konto">
       <img id="photo" alt="">
     </button>
@@ -616,8 +704,15 @@ td.n { color: var(--text2); white-space: nowrap; }
     <button data-v="tag" class="an">Tag</button>
     <button data-v="woche">Woche</button>
     <button data-v="monat">Monat</button>
+    <button data-v="aufgaben">Aufgaben</button>
     <button data-v="liste">Liste</button>
   </nav>
+
+  <div class="filter" id="filter">
+    <button data-f="alles" class="an">Alles</button>
+    <button data-f="termin">Nur Termine</button>
+    <button data-f="task">Nur Aufgaben</button>
+  </div>
 
   <div class="suchleiste versteckt" id="suchleiste">
     <input id="sucheFeld" type="search" placeholder="Titel, Notiz oder Ort suchen" autocomplete="off">
@@ -816,18 +911,67 @@ td.n { color: var(--text2); white-space: nowrap; }
   </div>
 </dialog>
 
+<!-- =============== POSTEINGANG =============== -->
+<dialog id="dlgPost">
+  <div class="dlgInhalt">
+    <h2>Nachrichten</h2>
+    <p class="dlgUnter">Was andere dir geschickt oder mit dir geteilt haben.</p>
+
+    <div id="postListe" style="display:flex;flex-direction:column;gap:9px"></div>
+
+    <div class="aktionen">
+      <button type="button" class="knopf hell" id="postZu">Schließen</button>
+      <button type="button" class="knopf rand" id="postGelesen">Alle gelesen</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- =============== NACHRICHT SCHREIBEN =============== -->
+<dialog id="dlgSchreiben">
+  <form id="formSchreiben" class="dlgInhalt">
+    <h2>Nachricht schreiben</h2>
+    <p class="dlgUnter" id="schreibenAn"></p>
+    <label for="sText">Text</label>
+    <textarea id="sText" required maxlength="800" placeholder="Worum geht es?"></textarea>
+    <div id="schreibenFehler" class="fehler"></div>
+    <div id="schreibenGut" class="gut"></div>
+    <div class="aktionen">
+      <button type="button" class="knopf hell" id="schreibenZu">Abbrechen</button>
+      <button type="submit" class="knopf">Senden</button>
+    </div>
+  </form>
+</dialog>
+
 <!-- =============== KONTO / DASHBOARD =============== -->
 <dialog id="dlgMich">
   <div class="dlgInhalt">
     <h2 id="michName">Mein Konto</h2>
     <p class="dlgUnter" id="michMail"></p>
 
-    <div id="adminBlock" class="versteckt block">
-      <label>Wer nutzt Sawa</label>
-      <div style="overflow-x:auto">
-        <table id="adminTabelle"></table>
+    <div class="block">
+      <label>Deine Zahlen</label>
+      <div class="kacheln" id="meineZahlen"></div>
+    </div>
+
+    <div id="adminBlock" class="versteckt">
+      <div class="block">
+        <label>Überblick</label>
+        <div class="kacheln" id="adminZahlen"></div>
       </div>
-      <p class="hinweis" id="adminZahl"></p>
+
+      <div class="block">
+        <label>Wer nutzt Sawa</label>
+        <div style="overflow-x:auto">
+          <table id="adminTabelle"></table>
+        </div>
+      </div>
+
+      <div class="block">
+        <label>Alle Kreise</label>
+        <div id="adminKreise" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+
+      <p class="hinweis" id="adminHinweis"></p>
     </div>
 
     <div class="aktionen">
