@@ -15,7 +15,7 @@
  * weiter die alte Fassung, egal was auf dem Server liegt.
  */
 
-const VERSION = "orbyx-3";
+const VERSION = "orbyx-4";
 const DATEIEN = [
   "./",
   "./index.html",
@@ -65,4 +65,12 @@ self.addEventListener("fetch", (ev) => {
       return treffer || ausNetz;
     })
   );
+});
+
+/* Die App fragt beim Tippen auf das Symbol nach, welche Fassung hier
+   eingebaut ist. So steht die Zahl nur an EINER Stelle, naemlich oben. */
+self.addEventListener("message", (ev) => {
+  if (ev.data === "fassung" && ev.ports && ev.ports[0]) {
+    ev.ports[0].postMessage({ fassung: VERSION });
+  }
 });
