@@ -18,7 +18,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc,
-  getDoc, getDocs, query, where, orderBy, onSnapshot, serverTimestamp,
+  getDoc, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp,
   writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -190,8 +190,12 @@ function erledigtAm(e, tag) {
 
 let nutzer     = null;
 let ansicht    = "tag";
+let filter     = "alles";       // alles | termin | task
 let anker      = heute();       // Tag, Woche oder Monat, je nach Ansicht
 let gewaehlt   = heute();       // im Monat angeklickter Tag
+let nachrichten = [];
+let offeneEinladungen = {};     // kreisId -> [einladungen]
+let stopPost   = null;
 
 let meineEintraege = [];        // alles, was ich sehen darf
 let meineKreise    = [];
@@ -222,9 +226,10 @@ $("loginBtn").addEventListener("click", async () => {
 $("logoutBtn").addEventListener("click", () => signOut(auth));
 
 onAuthStateChanged(auth, async (user) => {
-  [stopEigene, stopGeteilte, stopKreise].forEach((f) => { if (f) f(); });
-  stopEigene = stopGeteilte = stopKreise = null;
-  eigene = []; geteilte = []; meineEintraege = []; nachgeruestet = false;
+  [stopEigene, stopGeteilte, stopKreise, stopPost].forEach((f) => { if (f) f(); });
+  stopEigene = stopGeteilte = stopKreise = stopPost = null;
+  eigene = []; geteilte = []; meineEintraege = []; nachrichten = [];
+  nachgeruestet = false;
 
   if (!user) {
     nutzer = null;
@@ -245,6 +250,7 @@ onAuthStateChanged(auth, async (user) => {
 
   starteKreise();
   starteEintraege();
+  startePost();
   zeichne();
 });
 
@@ -323,9 +329,46 @@ function starteKreise() {
         photoURL: nutzer.photoURL || ""
       };
       zeichne();
+      ladeOffeneEinladungen();
     },
     (e) => console.error("Kreise:", e)
   );
+}
+
+// Wer wurde eingeladen und hat sich noch nicht angemeldet
+async function ladeOffeneEinladungen() {
+  offeneEinladungen = {};
+  for (const k of meineKreise) {
+    if (!(k.verwalter || []).includes(nutzer.uid)) continue;
+    try {
+      const snap = await getDocs(
+        query(collection(db, "einladungen"), where("kreisId", "==", k.id))
+      );
+      offeneEinladungen[k.id] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    } catch (e) { console.warn("Einladungen", k.id, e.code); }
+  }
+  if ($("dlgKreise").open) zeigeKreise();
+}
+
+/* ---------- Nachrichten ---------- */
+
+function startePost() {
+  stopPost = onSnapshot(
+    query(collection(db, "nachrichten"), where("anUid", "==", nutzer.uid)),
+    (snap) => {
+      nachrichten = snap.docs.map((x) => ({ id: x.id, ...x.data() }))
+        .sort((a, b) => (b.erstelltAm?.seconds || 0) - (a.erstelltAm?.seconds || 0));
+      zeigeZaehler();
+      if ($("dlgPost").open) zeigePost();
+    },
+    (e) => console.warn("Nachrichten:", e.code, e.message)
+  );
+}
+
+function zeigeZaehler() {
+  const neu = nachrichten.filter((n) => !n.gelesen).length;
+  $("postZahl").textContent = neu > 9 ? "9+" : String(neu);
+  $("postZahl").classList.toggle("versteckt", neu === 0);
 }
 
 // Zwei Abfragen: meine eigenen Eintraege und die, die andere mit einem
@@ -424,8 +467,39 @@ $("nav").addEventListener("click", (ev) => {
   ansicht = b.dataset.v;
   [...$("nav").children].forEach((x) => x.classList.toggle("an", x === b));
   if (ansicht === "monat") anker = gewaehlt;
+  merke("ansicht", ansicht);
   zeichne();
 });
+
+$("filter").addEventListener("click", (ev) => {
+  const b = ev.target.closest("button[data-f]");
+  if (!b) return;
+  filter = b.dataset.f;
+  [...$("filter").children].forEach((x) => x.classList.toggle("an", x === b));
+  merke("filter", filter);
+  zeichne();
+});
+
+// Auswahl merken, damit sie beim nächsten Öffnen noch steht
+function merke(schluessel, wert) {
+  try { localStorage.setItem("sawa." + schluessel, wert); } catch (e) {}
+}
+function gemerkt(schluessel) {
+  try { return localStorage.getItem("sawa." + schluessel); } catch (e) { return null; }
+}
+
+(function stelleWieder() {
+  const a = gemerkt("ansicht");
+  const f = gemerkt("filter");
+  if (a && [...$("nav").children].some((x) => x.dataset.v === a)) {
+    ansicht = a;
+    [...$("nav").children].forEach((x) => x.classList.toggle("an", x.dataset.v === a));
+  }
+  if (f && ["alles","termin","task"].includes(f)) {
+    filter = f;
+    [...$("filter").children].forEach((x) => x.classList.toggle("an", x.dataset.f === f));
+  }
+})();
 
 function schiebe(richtung) {
   if (ansicht === "tag")        anker = plus(anker, richtung);
@@ -435,6 +509,7 @@ function schiebe(richtung) {
     d.setDate(1); d.setMonth(d.getMonth() + richtung);
     anker = alsText(d);
   } else if (ansicht === "liste") anker = plus(anker, richtung * 30);
+  else return;   // Aufgabenansicht kennt kein Blättern
   zeichne();
 }
 $("zurueck").addEventListener("click", () => schiebe(-1));
@@ -451,14 +526,24 @@ function zeichne() {
   if (!nutzer) return;
   if (sucheAn) { sucheAusfuehren(); return; }
 
-  $("zeitleiste").classList.remove("versteckt");
+  // In der Aufgabenansicht gibt es nichts zu blättern
+  $("zeitleiste").classList.toggle("versteckt", ansicht === "aufgaben");
+  // und der Filter wäre dort sinnlos
+  $("filter").classList.toggle("versteckt", ansicht === "aufgaben");
+
   const b = $("buehne");
   b.innerHTML = "";
 
-  if (ansicht === "tag")        { kopfTag();   maleTag(b, anker); }
-  else if (ansicht === "woche") { kopfWoche(); maleWoche(b); }
-  else if (ansicht === "monat") { kopfMonat(); maleMonat(b); }
-  else                          { kopfListe(); maleListe(b); }
+  if (ansicht === "tag")           { kopfTag();   maleTag(b, anker); }
+  else if (ansicht === "woche")    { kopfWoche(); maleWoche(b); }
+  else if (ansicht === "monat")    { kopfMonat(); maleMonat(b); }
+  else if (ansicht === "aufgaben") { maleAufgaben(b); }
+  else                             { kopfListe(); maleListe(b); }
+}
+
+/* Der Filter greift über alle Ansichten */
+function passtZumFilter(e) {
+  return filter === "alles" || e.typ === filter;
 }
 
 function kopfTag() {
@@ -499,7 +584,7 @@ function kopfListe() {
 /* ---------- Eintraege eines Tages ---------- */
 
 function anTag(tag) {
-  return meineEintraege.filter((e) => laeuftAnTag(e, tag));
+  return meineEintraege.filter((e) => laeuftAnTag(e, tag) && passtZumFilter(e));
 }
 function sortiert(liste) {
   return [...liste].sort((a, b) => (a.start || "99").localeCompare(b.start || "99"));
@@ -512,7 +597,7 @@ function maleTag(box, tag) {
     .sort((a, b) => (a.frist || "9999").localeCompare(b.frist || "9999"));
 
   // Offene Aufgaben aus der Vergangenheit, nur einmalige.
-  const offen = meineEintraege.filter((e) =>
+  const offen = filter === "termin" ? [] : meineEintraege.filter((e) =>
     e.typ === "task" && !istSerie(e) && e.status === "offen" &&
     e.datum < tag && e.ownerId === nutzer.uid);
 
@@ -659,6 +744,61 @@ function maleMonatTag() {
   w.style.cssText = "display:flex;flex-direction:column;gap:8px";
   liste.forEach((e) => w.appendChild(zeile(e, gewaehlt)));
   box.appendChild(w);
+}
+
+/* ---------- Aufgaben ----------
+   Eigener Bereich, nur Aufgaben, nicht an einen Tag gebunden.
+   Sortiert nach Dringlichkeit statt nach Datum.                     */
+
+function maleAufgaben(box) {
+  const h = heute();
+
+  // Einmalige Aufgaben, alle offenen und die zuletzt erledigten
+  const einmalig = meineEintraege.filter((e) => e.typ === "task" && !istSerie(e));
+  const offen    = einmalig.filter((e) => e.status !== "erledigt");
+  const fertig   = einmalig.filter((e) => e.status === "erledigt")
+    .sort((a, b) => b.datum.localeCompare(a.datum)).slice(0, 15);
+
+  // Serien-Aufgaben, heute fällig
+  const serien = meineEintraege.filter((e) =>
+    e.typ === "task" && istSerie(e) && serieAnTag(e, h));
+
+  const dringend = (e) => e.frist || "9999-99-99";
+
+  const ueberfaellig = offen.filter((e) => e.frist && e.frist < h)
+    .sort((a, b) => a.frist.localeCompare(b.frist));
+  const heuteFaellig = offen.filter((e) => e.frist === h);
+  const bald = offen.filter((e) => e.frist && e.frist > h && tageBis(e.frist, h) <= 7)
+    .sort((a, b) => a.frist.localeCompare(b.frist));
+  const spaeter = offen.filter((e) => e.frist && tageBis(e.frist, h) > 7)
+    .sort((a, b) => a.frist.localeCompare(b.frist));
+  const ohneFrist = offen.filter((e) => !e.frist)
+    .sort((a, b) => a.datum.localeCompare(b.datum));
+
+  if (!offen.length && !serien.length && !fertig.length) {
+    const x = el("div", "leer");
+    x.appendChild(el("div", "gross", "✓"));
+    x.appendChild(document.createTextNode("Keine offenen Aufgaben."));
+    box.appendChild(x);
+    return;
+  }
+
+  const abschnitt = (titel, liste, warn) => {
+    if (!liste.length) return;
+    box.appendChild(trenner(titel, warn));
+    liste.forEach((e) => box.appendChild(zeile(e, e.datum, true)));
+  };
+
+  abschnitt("Überfällig", ueberfaellig, true);
+  abschnitt("Heute fällig", heuteFaellig, true);
+  abschnitt("Diese Woche", bald);
+  if (serien.length) {
+    box.appendChild(trenner("Heute wiederkehrend"));
+    serien.forEach((e) => box.appendChild(zeile(e, h)));
+  }
+  abschnitt("Später", spaeter);
+  abschnitt("Ohne Frist", ohneFrist);
+  abschnitt("Zuletzt erledigt", fertig);
 }
 
 /* ---------- Liste ---------- */
@@ -1072,6 +1212,7 @@ $("formEintrag").addEventListener("submit", async (ev) => {
       }
       const ref = await addDoc(collection(db, "eintraege"), daten);
       await setDoc(doc(db, "belegt", ref.id), schatten);
+      if (kreisIds.length) meldeGeteilt(titel, kreisIds, ref.id);
     }
 
     $("dlgEintrag").close();
@@ -1114,6 +1255,9 @@ function zeigeKreise() {
   }
 
   meineKreise.forEach((k) => {
+    const verwalter = (k.verwalter || []).includes(nutzer.uid);
+    const ersteller = k.erstellerId === nutzer.uid;
+
     const karte = el("div", "kreisKarte");
     const kopf = el("div", "kopf");
     const p = el("span", "kreisPunkt");
@@ -1122,7 +1266,6 @@ function zeigeKreise() {
     kopf.appendChild(p);
     kopf.appendChild(el("b", null, k.name));
 
-    const verwalter = (k.verwalter || []).includes(nutzer.uid);
     if (verwalter) {
       const b = el("button", "knopf rand", "Einladen");
       b.type = "button";
@@ -1140,9 +1283,11 @@ function zeigeKreise() {
     }
     karte.appendChild(kopf);
 
+    /* ---- Mitglieder ---- */
     (k.mitglieder || []).forEach((uid) => {
       const info = (k.info || {})[uid] || alleNutzer[uid] || {};
       const z = el("div", "mitglied");
+
       const av = el("div", "avatar");
       if (info.photoURL) {
         const img = el("img"); img.src = info.photoURL; img.alt = "";
@@ -1151,15 +1296,271 @@ function zeigeKreise() {
         av.textContent = (info.name || "?").slice(0, 1).toUpperCase();
       }
       z.appendChild(av);
+
       const t = el("div");
-      t.appendChild(el("div", null, (info.name || "Unbekannt") + (uid === nutzer.uid ? " (du)" : "")));
+      t.style.flexGrow = "1";
+      t.appendChild(el("div", null,
+        (info.name || "Unbekannt") + (uid === nutzer.uid ? " (du)" : "")));
       if (info.email) t.appendChild(el("div", "mail", info.email));
       z.appendChild(t);
-      if ((k.verwalter || []).includes(uid)) z.appendChild(el("span", "rolle", "Verwalter"));
+
+      if ((k.verwalter || []).includes(uid)) {
+        z.appendChild(el("span", "rolle", "Verwalter"));
+      }
+
+      // Nachricht schreiben
+      if (uid !== nutzer.uid) {
+        const nb = el("button", "klein", "Nachricht");
+        nb.type = "button";
+        nb.addEventListener("click", () => oeffneSchreiben(uid, info.name || info.email));
+        z.appendChild(nb);
+      }
+
+      // Entfernen, nur Verwalter, nicht sich selbst, nicht den Ersteller
+      if (verwalter && uid !== nutzer.uid && uid !== k.erstellerId) {
+        const wb = el("button", "klein gefahr", "Entfernen");
+        wb.type = "button";
+        wb.addEventListener("click", async () => {
+          if (!confirm(`${info.name || "Diese Person"} aus „${k.name}“ entfernen?`)) return;
+          try {
+            const info2 = { ...(k.info || {}) };
+            delete info2[uid];
+            await updateDoc(doc(db, "kreise", k.id), {
+              mitglieder: (k.mitglieder || []).filter((u) => u !== uid),
+              verwalter:  (k.verwalter  || []).filter((u) => u !== uid),
+              info: info2
+            });
+          } catch (e) {
+            alert("Fehlgeschlagen: " + (e.code || e.message));
+          }
+        });
+        z.appendChild(wb);
+      }
+
       karte.appendChild(z);
     });
 
+    /* ---- Offene Einladungen ---- */
+    (offeneEinladungen[k.id] || []).forEach((ein) => {
+      const z = el("div", "einladung");
+      const av = el("div", "avatar", "?");
+      z.appendChild(av);
+      const t = el("div");
+      t.style.flexGrow = "1";
+      t.appendChild(el("div", null, ein.email));
+      t.appendChild(el("div", "mail",
+        "Eingeladen" + (ein.alsVerwalter ? " als Verwalter" : "")));
+      z.appendChild(t);
+      z.appendChild(el("span", "warte", "wartet"));
+
+      const wb = el("button", "klein gefahr", "Zurückziehen");
+      wb.type = "button";
+      wb.addEventListener("click", async () => {
+        if (!confirm(`Einladung an ${ein.email} zurückziehen?`)) return;
+        try {
+          await deleteDoc(doc(db, "einladungen", ein.id));
+          await ladeOffeneEinladungen();
+        } catch (e) {
+          alert("Fehlgeschlagen: " + (e.code || e.message));
+        }
+      });
+      z.appendChild(wb);
+      karte.appendChild(z);
+    });
+
+    /* ---- Kreis verlassen oder löschen ---- */
+    const fuss = el("div");
+    fuss.style.cssText = "display:flex;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--linie)";
+
+    if (ersteller) {
+      const lb = el("button", "klein gefahr", "Kreis löschen");
+      lb.type = "button";
+      lb.addEventListener("click", async () => {
+        if (!confirm(
+          `Den Kreis „${k.name}“ wirklich löschen?\n\n` +
+          `Die Termine bleiben erhalten, aber niemand sieht mehr die des anderen. ` +
+          `Das lässt sich nicht rückgängig machen.`)) return;
+        try {
+          // erst die offenen Einladungen weg, dann der Kreis
+          for (const ein of (offeneEinladungen[k.id] || [])) {
+            await deleteDoc(doc(db, "einladungen", ein.id)).catch(() => {});
+          }
+          await deleteDoc(doc(db, "kreise", k.id));
+        } catch (e) {
+          alert("Fehlgeschlagen: " + (e.code || e.message));
+        }
+      });
+      fuss.appendChild(lb);
+    } else {
+      const vb = el("button", "klein gefahr", "Kreis verlassen");
+      vb.type = "button";
+      vb.addEventListener("click", async () => {
+        if (!confirm(`Den Kreis „${k.name}“ verlassen?`)) return;
+        try {
+          const info2 = { ...(k.info || {}) };
+          delete info2[nutzer.uid];
+          await updateDoc(doc(db, "kreise", k.id), {
+            mitglieder: (k.mitglieder || []).filter((u) => u !== nutzer.uid),
+            verwalter:  (k.verwalter  || []).filter((u) => u !== nutzer.uid),
+            info: info2
+          });
+        } catch (e) {
+          alert("Fehlgeschlagen: " + (e.code || e.message));
+        }
+      });
+      fuss.appendChild(vb);
+    }
+    karte.appendChild(fuss);
+
     box.appendChild(karte);
+  });
+}
+
+/* ===================================================================
+   NACHRICHTEN
+   =================================================================== */
+
+let schreibenAnUid = null;
+
+function oeffneSchreiben(uid, name) {
+  schreibenAnUid = uid;
+  $("schreibenAn").textContent = "An " + (name || "diese Person");
+  $("sText").value = "";
+  $("schreibenFehler").textContent = "";
+  $("schreibenGut").textContent = "";
+  $("dlgSchreiben").showModal();
+}
+$("schreibenZu").addEventListener("click", () => $("dlgSchreiben").close());
+
+$("formSchreiben").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  $("schreibenFehler").textContent = "";
+  const text = $("sText").value.trim();
+  if (!text || !schreibenAnUid) return;
+
+  try {
+    await addDoc(collection(db, "nachrichten"), {
+      anUid:   schreibenAnUid,
+      vonUid:  nutzer.uid,
+      vonName: nutzer.displayName || nutzer.email || "",
+      art:     "nachricht",
+      text,
+      gelesen: false,
+      erstelltAm: serverTimestamp()
+    });
+    $("schreibenGut").textContent = "Gesendet.";
+    $("sText").value = "";
+    setTimeout(() => $("dlgSchreiben").close(), 800);
+  } catch (e) {
+    $("schreibenFehler").textContent = "Fehlgeschlagen: " + (e.code || e.message);
+    console.error(e);
+  }
+});
+
+/* Wenn ich etwas mit einem Kreis teile, bekommen die anderen Bescheid */
+async function meldeGeteilt(titel, kreisIds, eintragId) {
+  const empfaenger = new Set();
+  meineKreise.filter((k) => kreisIds.includes(k.id))
+             .forEach((k) => (k.mitglieder || []).forEach((u) => {
+               if (u !== nutzer.uid) empfaenger.add(u);
+             }));
+  if (!empfaenger.size) return;
+
+  const kreisNamen = meineKreise.filter((k) => kreisIds.includes(k.id))
+                                .map((k) => k.name).join(", ");
+  try {
+    for (const uid of empfaenger) {
+      await addDoc(collection(db, "nachrichten"), {
+        anUid:   uid,
+        vonUid:  nutzer.uid,
+        vonName: nutzer.displayName || nutzer.email || "",
+        art:     "geteilt",
+        text:    titel,
+        kreisName: kreisNamen,
+        eintragId: eintragId || "",
+        gelesen: false,
+        erstelltAm: serverTimestamp()
+      });
+    }
+  } catch (e) { console.warn("Hinweis konnte nicht gesendet werden:", e.code); }
+}
+
+$("postBtn").addEventListener("click", () => { zeigePost(); $("dlgPost").showModal(); });
+$("postZu").addEventListener("click", () => $("dlgPost").close());
+
+$("postGelesen").addEventListener("click", async () => {
+  const neu = nachrichten.filter((n) => !n.gelesen);
+  if (!neu.length) return;
+  try {
+    const b = writeBatch(db);
+    neu.forEach((n) => b.update(doc(db, "nachrichten", n.id), { gelesen: true }));
+    await b.commit();
+  } catch (e) { console.error(e); }
+});
+
+function wannText(zeit) {
+  if (!zeit || !zeit.seconds) return "";
+  const d = new Date(zeit.seconds * 1000);
+  const min = Math.round((Date.now() - d.getTime()) / 60000);
+  if (min < 1) return "gerade eben";
+  if (min < 60) return "vor " + min + " Min";
+  if (min < 1440) return "vor " + Math.round(min / 60) + " Std";
+  return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+}
+
+function zeigePost() {
+  const box = $("postListe");
+  box.innerHTML = "";
+
+  if (!nachrichten.length) {
+    box.appendChild(el("div", "leer", "Keine Nachrichten."));
+    return;
+  }
+
+  nachrichten.slice(0, 60).forEach((n) => {
+    const k = el("div", "post" + (n.gelesen ? "" : " neu"));
+
+    const kopf = el("div");
+    kopf.style.cssText = "display:flex;align-items:baseline;gap:8px";
+    kopf.appendChild(el("span", "von", n.vonName || "Jemand"));
+    kopf.appendChild(el("span", "wann", wannText(n.erstelltAm)));
+    k.appendChild(kopf);
+
+    if (n.art === "geteilt") {
+      k.appendChild(el("div", "text",
+        `hat „${n.text}“ mit ${n.kreisName || "einem Kreis"} geteilt`));
+    } else {
+      k.appendChild(el("div", "text", n.text));
+    }
+
+    const knoepfe = el("div", "knoepfe");
+
+    if (!n.gelesen) {
+      const g = el("button", null, "Gelesen");
+      g.type = "button";
+      g.addEventListener("click", () =>
+        updateDoc(doc(db, "nachrichten", n.id), { gelesen: true }).catch(console.error));
+      knoepfe.appendChild(g);
+    }
+
+    if (n.art === "nachricht" && alleNutzer[n.vonUid]) {
+      const a = el("button", null, "Antworten");
+      a.type = "button";
+      a.addEventListener("click", () => {
+        $("dlgPost").close();
+        oeffneSchreiben(n.vonUid, n.vonName);
+      });
+      knoepfe.appendChild(a);
+    }
+
+    const w = el("button", null, "Löschen");
+    w.type = "button";
+    w.addEventListener("click", () =>
+      deleteDoc(doc(db, "nachrichten", n.id)).catch(console.error));
+    knoepfe.appendChild(w);
+
+    k.appendChild(knoepfe);
+    box.appendChild(k);
   });
 }
 
@@ -1392,6 +1793,7 @@ function freieFenster(belegt, von, bis, frueh, spaet, dauer) {
    =================================================================== */
 
 $("michBtn").addEventListener("click", async () => {
+  zeigeMeineZahlen();
   const admin = ADMIN_MAILS.includes((nutzer.email || "").toLowerCase());
   $("adminBlock").classList.toggle("versteckt", !admin);
   if (admin) await ladeDashboard();
@@ -1399,28 +1801,100 @@ $("michBtn").addEventListener("click", async () => {
 });
 $("michZu").addEventListener("click", () => $("dlgMich").close());
 
+function kachel(zahl, text) {
+  const k = el("div", "kachel");
+  k.appendChild(el("b", null, String(zahl)));
+  k.appendChild(el("span", null, text));
+  return k;
+}
+
+function zeigeMeineZahlen() {
+  const box = $("meineZahlen");
+  box.innerHTML = "";
+  const h = heute();
+  const meins = meineEintraege.filter((e) => e.ownerId === nutzer.uid);
+
+  const termine = meins.filter((e) => e.typ === "termin");
+  const tasks   = meins.filter((e) => e.typ === "task");
+  const offen   = tasks.filter((e) => !istSerie(e) && e.status !== "erledigt");
+  const spaet   = offen.filter((e) => e.frist && e.frist < h);
+  const serien  = meins.filter(istSerie);
+  const geteiltVonMir = meins.filter((e) => (e.kreisIds || []).length);
+
+  box.appendChild(kachel(termine.length, "Termine"));
+  box.appendChild(kachel(offen.length, "offene Aufgaben"));
+  box.appendChild(kachel(spaet.length, "überfällig"));
+  box.appendChild(kachel(serien.length, "Serien"));
+  box.appendChild(kachel(meineKreise.length, "Kreise"));
+  box.appendChild(kachel(geteiltVonMir.length, "geteilt"));
+}
+
 async function ladeDashboard() {
   const t = $("adminTabelle");
   t.innerHTML = "<tr><th>Name</th><th>E-Mail</th><th>Zuletzt da</th></tr>";
+
   try {
     const snap = await getDocs(collection(db, "users"));
-    const reihen = snap.docs.map((d) => d.data())
+    const reihen = snap.docs.map((d) => ({ uid: d.id, ...d.data() }))
       .sort((a, b) => (b.zuletzt?.seconds || 0) - (a.zuletzt?.seconds || 0));
 
+    const jetzt = Date.now();
+    let aktiv7 = 0;
     reihen.forEach((u) => {
       const tr = el("tr");
       tr.appendChild(el("td", null, u.name || "—"));
       tr.appendChild(el("td", "n", u.email || "—"));
-      const z = u.zuletzt?.seconds
-        ? new Date(u.zuletzt.seconds * 1000).toLocaleDateString("de-DE",
-            { day: "2-digit", month: "2-digit", year: "2-digit" })
-        : "—";
+      let z = "—";
+      if (u.zuletzt?.seconds) {
+        const d = new Date(u.zuletzt.seconds * 1000);
+        if (jetzt - d.getTime() < 7 * 86400000) aktiv7++;
+        z = d.toLocaleDateString("de-DE",
+              { day: "2-digit", month: "2-digit", year: "2-digit" });
+      }
       tr.appendChild(el("td", "n", z));
       t.appendChild(tr);
     });
-    $("adminZahl").textContent = reihen.length + " Personen nutzen Sawa.";
+
+    // Zahlen oben
+    const zb = $("adminZahlen");
+    zb.innerHTML = "";
+    zb.appendChild(kachel(reihen.length, "Personen"));
+    zb.appendChild(kachel(aktiv7, "aktiv, 7 Tage"));
+
+    // Kreise, die ich sehen darf
+    const kb = $("adminKreise");
+    kb.innerHTML = "";
+    if (!meineKreise.length) {
+      kb.appendChild(el("div", "hinweis", "Noch keine Kreise."));
+    } else {
+      zb.appendChild(kachel(meineKreise.length, "Kreise"));
+      meineKreise.forEach((k) => {
+        const z = el("div", "mitglied");
+        z.style.borderTop = "none";
+        const p = el("span", "kreisPunkt");
+        p.style.background = k.farbe;
+        p.style.width = "12px"; p.style.height = "12px";
+        z.appendChild(p);
+        const t2 = el("div");
+        t2.style.flexGrow = "1";
+        t2.appendChild(el("div", null, k.name));
+        const namen = (k.mitglieder || [])
+          .map((u) => ((k.info || {})[u] || {}).name || "?")
+          .map((n) => n.split(" ")[0]).join(", ");
+        t2.appendChild(el("div", "mail", namen));
+        z.appendChild(t2);
+        const warte = (offeneEinladungen[k.id] || []).length;
+        if (warte) z.appendChild(el("span", "rolle", warte + " offen"));
+        kb.appendChild(z);
+      });
+    }
+
+    $("adminHinweis").textContent =
+      "Das Dashboard sieht nur, wer in ADMIN_MAILS oben in app.js steht. " +
+      "Termine anderer stehen hier bewusst nicht, dafür bräuchte es Zugriff " +
+      "auf fremde Einträge.";
   } catch (e) {
-    $("adminZahl").textContent = "Konnte nicht laden: " + (e.code || e.message);
+    $("adminHinweis").textContent = "Konnte nicht laden: " + (e.code || e.message);
     console.error(e);
   }
 }
