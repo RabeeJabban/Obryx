@@ -1,235 +1,674 @@
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
+/* ===================================================================
+   ORBYX – SPRACHEN
+   ===================================================================
 
-    // ================= HILFEN =================
-    function angemeldet()  { return request.auth != null; }
-    function meineUid()    { return request.auth.uid; }
-    function meineMail()   { return request.auth.token.email.lower(); }
+   Eine neue Sprache hinzufügen:
 
-    // Dieselbe Liste wie BETREIBER oben in app.js.
-    // Kommt eine Adresse dazu, muss sie an BEIDEN Stellen stehen.
-    function istBetreiber() {
-      return angemeldet() && meineMail() in [
-        'rabea.jabban.mrj@gmail.com'
-      ];
-    }
+     1. Unten einen Block kopieren, zum Beispiel "de", und umbenennen.
+        Der Name ist der Sprachcode: en, tr, ru, fr …
+     2. Alle Werte übersetzen. Die Schlüssel links NIEMALS ändern.
+     3. In SPRACHEN oben den Namen eintragen, und "rtl: true" setzen,
+        wenn von rechts nach links gelesen wird (Arabisch, Hebräisch,
+        Persisch, Urdu).
 
-    function kreis(id) {
-      return get(/databases/$(database)/documents/kreise/$(id)).data;
-    }
-    function binMitglied(id) {
-      return angemeldet() && meineUid() in kreis(id).get('mitglieder', []);
-    }
-    function binVerwalter(id) {
-      return angemeldet() && meineUid() in kreis(id).get('verwalter', []);
-    }
+   Mehr ist nicht nötig. Die App findet die Sprache von allein.
 
-    // Ein fehlendes Feld bricht die ganze Regelpruefung ab, und dann
-    // schlaegt die KOMPLETTE Abfrage fehl, nicht nur ein Dokument.
-    // Deshalb steht bei optionalen Feldern ueberall .get(feld, standard).
+   Platzhalter in Texten stehen in geschweiften Klammern, etwa {n} oder
+   {name}. Die müssen in der Übersetzung erhalten bleiben, dürfen aber
+   an einer anderen Stelle im Satz stehen.
+   =================================================================== */
 
-    // ================= OEFFENTLICHES PROFIL =================
-    // Hier steht KEINE E-Mail. Name und Bild reichen fuer die Anzeige,
-    // und sie stehen ohnehin im jeweiligen Kreis.
-    match /users/{userId} {
-      allow read: if angemeldet() && (meineUid() == userId || istBetreiber());
+export const SPRACHEN = {
+  de: { name: "Deutsch",  eigen: "Deutsch",  rtl: false },
+  ar: { name: "Arabisch", eigen: "العربية", rtl: true  }
+};
 
-      // Die zwei Schalter aktiv und darfKreiseAnlegen darf man NICHT
-      // selbst setzen, sonst koennte sich ein gesperrtes Konto
-      // einfach wieder freischalten.
-      allow create: if angemeldet() && meineUid() == userId
-                    && !request.resource.data.keys()
-                        .hasAny(['aktiv', 'darfKreiseAnlegen']);
-      allow update: if angemeldet() && meineUid() == userId
-                    && !request.resource.data.diff(resource.data)
-                        .affectedKeys().hasAny(['aktiv', 'darfKreiseAnlegen']);
+export const TEXTE = {
 
-      // Nur der Betreiber sperrt und gibt frei, und auch nur das.
-      allow update: if istBetreiber()
-                    && request.resource.data.diff(resource.data)
-                       .affectedKeys().hasOnly(['aktiv', 'darfKreiseAnlegen']);
-    }
+/* ================================ DEUTSCH ================================ */
+de: {
+  wochentage: ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"],
+  kurzTage:   ["Mo","Di","Mi","Do","Fr","Sa","So"],
+  monate: ["Januar","Februar","März","April","Mai","Juni",
+           "Juli","August","September","Oktober","November","Dezember"],
 
-    // ================= PRIVATES PROFIL =================
-    // Nur die E-Mail. Liest man selbst, und der Betreiber.
-    match /users_privat/{userId} {
-      allow read:  if angemeldet() && (meineUid() == userId || istBetreiber());
-      allow write: if angemeldet() && meineUid() == userId;
-    }
+  // Datumsformen. {wt} Wochentag, {tag} Tageszahl, {monat} Monat.
+  // Deutsch schreibt den Ordnungspunkt nach der Zahl, Arabisch nicht.
+  datLang: "{wt}, {tag}. {monat}",
+  datKurz: "{wt}, {tag}.{monat}.",
 
-    // ================= KREISE =================
-    match /kreise/{kreisId} {
-      allow read: if angemeldet() && meineUid() in resource.data.get('mitglieder', []);
 
-      // Anlegen: man macht sich selbst zum Mitglied und Verwalter
-      allow create: if angemeldet()
-                    && request.resource.data.erstellerId == meineUid()
-                    && meineUid() in request.resource.data.get('mitglieder', [])
-                    && meineUid() in request.resource.data.get('verwalter', []);
+  // ---- Balkenplan ----
+  planNiemand: "Heute ist niemand eingetragen.",
+  planBelegt: "Belegt",
+  planIch: "Ich",
+  planGanzerTag: "Ohne Uhrzeit",
+  planJetzt: "jetzt",
+  planFrei: "frei",
+  planBuchen: "Diese Zeit nehmen",
+  planVergeben: "vergeben",
+  planEngerZeigen: "Enger",
+  planWeiterZeigen: "Weiter",
 
-      // Aendern: Verwalter duerfen alles, auch Arbeitszeiten und Terminarten
-      allow update: if angemeldet()
-                    && meineUid() in resource.data.get('verwalter', []);
+  // ---- Kreis-Einstellungen ----
+  kEinstellungen: "Einstellungen",
+  kBelegung: "Wie die Zeit vergeben wird",
+  kParallel: "Gleichzeitig",
+  kExklusiv: "Nur einer",
+  kBelegungHinweis: "Gleichzeitig: mehrere können zur selben Zeit arbeiten, wie bei " +
+                    "Fahrern in einer Schicht. Nur einer: ein Zeitfenster gehört genau " +
+                    "einer Person, wie bei Fahrstunden.",
+  kArten: "Terminarten",
+  kArtenHinweis: "Was in diesem Kreis immer wieder vorkommt. Beim Anlegen eines " +
+                 "Termins genügt dann ein Tipp. Etwas anderes eintragen geht trotzdem.",
+  kArtName: "Bezeichnung",
+  kArtNameBsp: "Fahrstunde, Theorie, Schicht",
+  kArtDauer: "Dauer in Minuten",
+  kArtHinzu: "Hinzufügen",
+  kArtKeine: "Noch keine Terminart angelegt.",
+  kZeiten: "Arbeitszeiten",
+  kZeitenHinweis: "Wann in diesem Kreis überhaupt gearbeitet wird. Der Plan zeigt nur " +
+                  "diesen Ausschnitt, und bei „Nur einer“ entstehen daraus die Zeitfenster.",
+  kZeitHinzu: "Zeit hinzufügen",
+  kZeitKeine: "Keine Arbeitszeiten festgelegt, der Plan zeigt den ganzen Tag.",
+  kSpeichern: "Einstellungen speichern",
+  kGespeichert: "Gespeichert.",
+  kNurVerwalter: "Das darf nur ein Verwalter ändern.",
+  kDauerFehlt: "Bezeichnung und Dauer eintragen.",
+  kZeitFehlt: "Wähle Wochentage und Uhrzeiten.",
 
-      // Verlassen: sich selbst austragen darf jedes Mitglied
-      allow update: if angemeldet()
-                    && meineUid() in resource.data.get('mitglieder', [])
-                    && !(meineUid() in request.resource.data.get('mitglieder', []))
-                    && request.resource.data.diff(resource.data)
-                       .affectedKeys().hasOnly(['mitglieder', 'info', 'verwalter']);
+  // ---- Zeitfenster ----
+  slBelegt: "Diese Zeit ist schon vergeben. Nimm ein anderes Fenster.",
+  slFrei: "{n} frei",
+  slAlleWeg: "Alle Fenster vergeben.",
+  slNimm: "Nehmen",
+  slDein: "Deins",
 
-      // Seinen eigenen Namen im Kreis darf jedes Mitglied aendern
-      allow update: if angemeldet()
-                    && meineUid() in resource.data.get('mitglieder', [])
-                    && request.resource.data.diff(resource.data)
-                       .affectedKeys().hasOnly(['info']);
+  // ---- Name ----
+  nmTitel: "Wie heißt du?",
+  nmUnter: "Der Name steht in deinen Kreisen. Deine E-Mail-Adresse sehen die " +
+           "anderen Mitglieder nicht.",
+  nmFeld: "Name",
+  nmBsp: "Vorname Nachname",
+  nmWeiter: "Weiter",
+  nmFehlt: "Trag bitte einen Namen ein.",
+  nmAendern: "Namen ändern",
 
-      // Beitreten: wer eingeladen wurde, darf sich selbst eintragen.
-      // Die Einladung hat eine feste Kennung aus Kreis und E-Mail,
-      // deshalb kann die Regel sie direkt nachschlagen. Ohne diesen
-      // Kniff koennte jeder beitreten, der eine Kreis-Kennung erraet.
-      allow update: if angemeldet()
-                    && !(meineUid() in resource.data.get('mitglieder', []))
-                    && meineUid() in request.resource.data.get('mitglieder', [])
-                    && request.resource.data.diff(resource.data)
-                       .affectedKeys().hasOnly(['mitglieder', 'info', 'verwalter'])
-                    && exists(/databases/$(database)/documents/einladungen/$(kreisId + '_' + meineMail()))
-                    && (
-                      !(meineUid() in request.resource.data.get('verwalter', []))
-                      || get(/databases/$(database)/documents/einladungen/$(kreisId + '_' + meineMail())).data.alsVerwalter == true
-                    );
 
-      allow delete: if angemeldet() && resource.data.erstellerId == meineUid();
-    }
+  // ---- Beitritt ----
+  nBeigetreten: "ist jetzt im Kreis {kreis}",
+  nWillkommen: "Du bist jetzt im Kreis {kreis}",
+  eiFertig: "Einladungstext kopieren",
+  eiKopiert: "Kopiert. Schick den Text an {mail}.",
+  eiText: "Ich habe dich zu Orbyx eingeladen: {link}\n\n" +
+          "Melde dich dort mit {mail} an, dann bist du im Kreis „{kreis}“. " +
+          "Mehr musst du nicht tun.",
+  eiNochNicht: "Lade erst jemanden ein.",
 
-    // ================= NAME UND MAIL IM KREIS =================
-    // Kennung ist immer kreisId + "_" + uid.
-    // Lesen darf sie nur der Verwalter des Kreises und die Person selbst.
-    // Deshalb sehen Mitglieder die Adressen der anderen nicht.
-    match /kreisinfo/{infoId} {
-      allow read: if angemeldet() && (
-                    resource.data.uid == meineUid()
-                    || binVerwalter(resource.data.kreisId)
-                  );
+  // Marke
+  spruch: "Ordnung für alles, was gleichzeitig läuft.",
+  anmelden: "Mit Google anmelden",
+  anmeldenFehl: "Anmeldung fehlgeschlagen: {code}",
+  gesperrt: "Dieses Konto ist gesperrt. Wende dich an den Betreiber.",
 
-      allow create, update: if angemeldet()
-                            && request.resource.data.uid == meineUid()
-                            && infoId == request.resource.data.kreisId + '_' + meineUid()
-                            && binMitglied(request.resource.data.kreisId);
+  // Kopfzeile
+  suchen: "Suchen",
+  terminFinden: "Termin finden",
+  kreise: "Kreise",
+  nachrichten: "Nachrichten",
+  konto: "Konto",
+  neuerEintrag: "Neuer Eintrag",
 
-      allow delete: if angemeldet() && (
-                      resource.data.uid == meineUid()
-                      || !exists(/databases/$(database)/documents/kreise/$(resource.data.kreisId))
-                      || binVerwalter(resource.data.kreisId)
-                    );
-    }
+  // Ansichten
+  vTag: "Tag", vWoche: "Woche", vMonat: "Monat",
+  vAufgaben: "Aufgaben", vListe: "Liste",
+  fAlles: "Alles", fTermine: "Nur Termine", fAufgaben: "Nur Aufgaben",
 
-    // ================= EINLADUNGEN =================
-    match /einladungen/{einladungId} {
-      allow read: if angemeldet() && (
-                    resource.data.email == meineMail()
-                    || binVerwalter(resource.data.kreisId)
-                  );
+  // Zeitleiste
+  heute: "Heute", vergangen: "Vergangen",
+  woche: "Woche", wasAnsteht: "Was ansteht", naechste30: "Die nächsten 30 Tage",
+  zurueck: "Zurück", weiter: "Weiter",
 
-      allow create: if angemeldet()
-                    && binVerwalter(request.resource.data.kreisId)
-                    && einladungId == request.resource.data.kreisId + '_' + request.resource.data.email
-                    && request.resource.data.email == request.resource.data.email.lower();
+  // Leere Zustände
+  nichtsTag: "Nichts eingetragen für diesen Tag.",
+  nichtsTagFeiertag: "{name} – nichts eingetragen.",
+  nichtsGeplant: "Nichts eingetragen.",
+  keineAufgaben: "Keine offenen Aufgaben.",
+  nichts30: "In den nächsten 30 Tagen ist nichts eingetragen.",
+  frei: "frei",
+  tippe2: "Tippe mindestens zwei Zeichen.",
+  nichtsGefunden: "Nichts gefunden für „{wort}“.",
+  sucheLaeuft: "Suche …",
+  ladeFehler: "Konnte nicht laden: {code}",
+  ladeHinweis: "Bei „permission-denied“ sind die Regeln noch nicht veröffentlicht. " +
+               "Bei „failed-precondition“ fehlt ein Index, dann steht in der Konsole ein Link.",
 
-      allow delete: if angemeldet() && (
-                      resource.data.email == meineMail()
-                      || !exists(/databases/$(database)/documents/kreise/$(resource.data.kreisId))
-                      || binVerwalter(resource.data.kreisId)
-                    );
-    }
+  // Abschnitte
+  aTermine: "Termine",
+  aAufgaben: "Aufgaben",
+  aOffenFrueher: "Noch offen von früher",
+  aUeberfaellig: "Überfällig",
+  aHeuteFaellig: "Heute fällig",
+  aDieseWoche: "Diese Woche",
+  aWiederkehrend: "Heute wiederkehrend",
+  aSpaeter: "Später",
+  aOhneFrist: "Ohne Frist",
+  aErledigt: "Zuletzt erledigt",
+  aTreffer: "{n} Treffer",
+  aZugewiesen: "Dir zugewiesen",
 
-    // ================= ZEITFENSTER =================
-    // Nur fuer Kreise, in denen ein Fenster genau einer Person gehoert.
-    // Kennung ist kreisId + "_" + Datum + "_" + Uhrzeit.
-    //
-    // Der ganze Trick steht in diesen drei Zeilen: create gelingt in
-    // Firestore NUR, wenn das Dokument noch nicht existiert, und update
-    // ist verboten. Damit kann kein zweiter dieselbe Stunde nehmen,
-    // auch nicht in derselben Sekunde. Das entscheidet die Datenbank,
-    // nicht die App, und laesst sich deshalb nicht austricksen.
-    match /slots/{slotId} {
-      allow read: if angemeldet() && binMitglied(resource.data.kreisId);
+  // Fristen
+  fristWar: "Frist war {datum}",
+  fristSpaet: "{n} Tage überfällig",
+  fristHeute: "Heute fällig",
+  fristMorgen: "Morgen fällig",
+  fristBald: "In {n} Tagen fällig",
+  fristDatum: "Frist {datum}",
+  vonPerson: "von {name}",
+  serie: "Serie",
+  abhaken: "Aufgabe abhaken",
+  loeschen: "Löschen",
 
-      allow create: if angemeldet()
-                    && request.resource.data.uid == meineUid()
-                    && binMitglied(request.resource.data.kreisId)
-                    && slotId == request.resource.data.kreisId + '_'
-                               + request.resource.data.datum + '_'
-                               + request.resource.data.start;
+  // Zusage
+  zStatus: "Zusagen",
+  zZugesagt: "zugesagt",
+  zAbgesagt: "abgesagt",
+  zOffen: "offen",
+  zZusagen: "Zusagen",
+  zAbsagen: "Absagen",
+  zWartet: "{n} offen",
+  zAlleZu: "alle zugesagt",
+  zUebersicht: "{zu} von {alle} zugesagt",
 
-      allow update: if false;
+  // Formular
+  fNeu: "Neuer Eintrag",
+  fBearbeiten: "Eintrag bearbeiten",
+  fWasSteht: "Was steht an?",
+  fSerieHinweis: "Änderungen gelten für die ganze Serie.",
+  fTermin: "Termin", fAufgabe: "Aufgabe",
+  fEinmal: "Einmal", fSerie: "Wiederholt sich",
+  fTitel: "Titel", fTitelBsp: "Zahnarzt, Einkaufen, Vorlesung",
+  fDatum: "Datum", fErsterTag: "Erster Tag", fGeplantAm: "Geplant am",
+  fVon: "Von", fBis: "Bis", fUhrzeitOpt: "Uhrzeit (optional)",
+  fWochentage: "An welchen Wochentagen",
+  fBisEinschl: "Bis einschließlich",
+  fOhneFeiertage: "An Feiertagen aussetzen",
+  fOhneFerien: "In den Schulferien aussetzen",
+  fNrw: "Feiertage und Ferien gelten für Nordrhein-Westfalen.",
+  fFrist: "Frist (optional)",
+  fOrt: "Ort (optional)", fOrtBsp: "Büro, Online, Zuhause",
+  fNotiz: "Notiz", fOptional: "Optional",
+  fTeilen: "Mit welchen Kreisen teilen",
+  fTeilenHinweis: "Ohne Auswahl sieht nur du den Eintrag. Deine Kreise sehen " +
+                  "immer, dass die Zeit belegt ist, aber nur bei geteilten " +
+                  "Einträgen auch womit.",
+  fZuweisen: "Wem zuweisen",
+  fZuweisenHinweis: "Die Ausgewählten bekommen eine Anfrage und können zusagen " +
+                    "oder absagen. Du siehst, wer geantwortet hat.",
+  fTagAbsagen: "Am {datum} absagen",
+  abbrechen: "Abbrechen", speichern: "Speichern", schliessen: "Schließen",
 
-      allow delete: if angemeldet() && (
-                      resource.data.uid == meineUid()
-                      || binVerwalter(resource.data.kreisId)
-                    );
-    }
+  // Formularfehler
+  eTitelDatum: "Titel und Datum sind nötig.",
+  eStartzeit: "Ein Termin braucht eine Startzeit.",
+  eEnde: "Das Ende muss nach dem Start liegen.",
+  eFrist: "Die Frist liegt vor dem geplanten Tag.",
+  eWochentag: "Wähle mindestens einen Wochentag.",
+  eSerienende: "Eine Serie braucht ein Enddatum.",
+  eSerieVor: "Das Serienende liegt vor dem ersten Tag.",
+  eSpeichern: "Speichern fehlgeschlagen: {code}",
+  eLoeschenFrage: "Diesen Eintrag löschen?",
+  eSerieLoeschen: "Die ganze Serie „{titel}“ löschen?\n\nWenn nur dieser Tag " +
+                  "ausfallen soll: abbrechen, auf den Eintrag tippen und " +
+                  "„Diesen Tag absagen“ wählen.",
 
-    // ================= EINTRAEGE =================
-    match /eintraege/{eintragId} {
-      allow read: if angemeldet() && (
-                    resource.data.ownerId == meineUid()
-                    || meineUid() in resource.data.get('sichtbarFuer', [])
-                  );
+  // Kreise
+  kTitel: "Kreise",
+  kUnter: "Ein Kreis ist eine Gruppe, die zusammen plant. Familie, Arbeit, " +
+          "Kunden. Jeder kann in mehreren Kreisen sein.",
+  kKeine: "Du bist noch in keinem Kreis. Leg unten einen an und lade Leute ein.",
+  kNeuer: "Neuen Kreis anlegen",
+  kName: "Name", kNameBsp: "Familie, Team, Kunden …",
+  kFarbe: "Farbe",
+  kArt: "Art",
+  kArtKreis: "Kreis",
+  kArtStern: "Stern",
+  kArtHinweis: "Im Kreis sehen alle die belegten Zeiten aller. Beim Stern " +
+               "sehen die Mitglieder nur dich, und nicht einander. Für " +
+               "Kunden, Schüler oder Fahrer nimm den Stern.",
+  kAnlegen: "Anlegen",
+  kEinladen: "Einladen",
+  kVerwalter: "Verwalter",
+  kDu: "(du)",
+  kWartet: "wartet",
+  kEingeladen: "Eingeladen",
+  kEingeladenVerw: "Eingeladen als Verwalter",
+  kZurueckziehen: "Zurückziehen",
+  kZurueckFrage: "Einladung an {mail} zurückziehen?",
+  kEntfernen: "Entfernen",
+  kEntfernenFrage: "{name} aus „{kreis}“ entfernen?",
+  kVerlassen: "Kreis verlassen",
+  kVerlassenFrage: "Den Kreis „{kreis}“ verlassen?",
+  kLoeschen: "Kreis löschen",
+  kLoeschenFrage: "Den Kreis „{kreis}“ wirklich löschen?\n\nDie Termine bleiben " +
+                  "erhalten, aber niemand sieht mehr die des anderen. Das " +
+                  "lässt sich nicht rückgängig machen.",
+  kNachricht: "Nachricht",
+  kDarfNicht: "Du darfst keine Kreise anlegen. Der Betreiber kann das freischalten.",
+  kUnbekannt: "Unbekannt",
+  kNameFehlt: "Gib dem Kreis einen Namen.",
 
-      allow create: if angemeldet() && request.resource.data.ownerId == meineUid();
+  // Einladen
+  eiTitel: "Einladen",
+  eiIn: "In den Kreis {kreis}",
+  eiMail: "E-Mail-Adresse",
+  eiAlsVerwalter: "Darf selbst Leute in diesen Kreis einladen",
+  eiHinweis: "Die Person muss sich mit genau dieser Adresse anmelden. Sobald sie " +
+             "die App offen hat, ist sie im Kreis, ohne etwas anzuklicken.",
+  eiSenden: "Einladen",
+  eiKeineMail: "Das sieht nicht nach einer E-Mail aus.",
+  eiSchonDrin: "Du bist schon drin.",
+  eiErfolg: "Eingeladen. {mail} ist im Kreis, sobald sie sich anmeldet.",
 
-      allow update, delete: if angemeldet() && resource.data.ownerId == meineUid();
+  // Termin finden
+  tfTitel: "Termin finden",
+  tfUnter: "Zeigt die Zeitfenster, in denen alle Ausgewählten frei sind.",
+  tfMitWem: "Mit wem",
+  tfVon: "Von", tfBis: "Bis",
+  tfFrueh: "Frühestens", tfSpaet: "Spätestens",
+  tfDauer: "Mindestdauer",
+  tfMin: "{n} Min", tfStd: "{n} Std",
+  tfSuchen: "Freie Zeiten suchen",
+  tfEintragen: "Eintragen",
+  tfNiemand: "Noch niemand in deinen Kreisen. Lege einen Kreis an und lade jemanden ein.",
+  tfKeine: "Kein gemeinsames Fenster in diesem Zeitraum. Versuch einen längeren " +
+           "Zeitraum oder eine kürzere Dauer.",
+  tfAlleFrei: "Alle frei: {namen}",
+  tfZeitraum: "Prüfe den Zeitraum.",
+  tfUhrzeiten: "Prüfe die Uhrzeiten.",
+  tfZuLang: "Höchstens 60 Tage auf einmal.",
 
-      // Zusagen: wem der Eintrag zugewiesen ist, der darf antworten.
-      // Aber wirklich nur das Feld zusagen, nichts anderes.
-      allow update: if angemeldet()
-                    && meineUid() in resource.data.get('zugewiesen', [])
-                    && request.resource.data.diff(resource.data)
-                       .affectedKeys().hasOnly(['zusagen']);
-    }
+  // Nachrichten
+  nTitel: "Nachrichten",
+  nUnter: "Was andere dir geschickt oder mit dir geteilt haben.",
+  nKeine: "Keine Nachrichten.",
+  nGelesen: "Gelesen",
+  nAlleGelesen: "Alle gelesen",
+  nAntworten: "Antworten",
+  nHatGeteilt: "hat „{titel}“ mit {kreis} geteilt",
+  nHatZugewiesen: "hat dir „{titel}“ zugewiesen",
+  nHatZugesagt: "hat für „{titel}“ zugesagt",
+  nHatAbgesagt: "hat für „{titel}“ abgesagt",
+  nGerade: "gerade eben",
+  nVorMin: "vor {n} Min",
+  nVorStd: "vor {n} Std",
+  nJemand: "Jemand",
 
-    // ================= BELEGTE ZEITEN =================
-    // Schattenkalender ohne Titel und Notiz. Nur Datum und Uhrzeit.
-    // Dadurch sehen Kreis-Mitglieder, WANN jemand belegt ist,
-    // aber nicht WOMIT.
-    //
-    // Hier traegt sich auch ein, wem ein Termin zugewiesen wurde:
-    // in fremde Kalender darf niemand schreiben, also setzt die App
-    // des Zugewiesenen den Block selbst, mit ownerId gleich sich selbst.
-    match /belegt/{belegtId} {
-      allow read: if angemeldet() && (
-                    resource.data.ownerId == meineUid()
-                    || meineUid() in resource.data.get('sichtbarFuer', [])
-                  );
+  // Schreiben
+  sTitel: "Nachricht schreiben",
+  sAn: "An {name}",
+  sText: "Text", sTextBsp: "Worum geht es?",
+  sSenden: "Senden",
+  sGesendet: "Gesendet.",
 
-      allow create, update: if angemeldet()
-                            && request.resource.data.ownerId == meineUid();
+  // Konto
+  koTitel: "Mein Konto",
+  koSprache: "Sprache",
+  koZahlen: "Deine Zahlen",
+  koTermine: "Termine",
+  koOffen: "offene Aufgaben",
+  koUeberfaellig: "überfällig",
+  koSerien: "Serien",
+  koKreise: "Kreise",
+  koGeteilt: "geteilt",
+  koAbmelden: "Abmelden",
 
-      allow delete: if angemeldet() && resource.data.ownerId == meineUid();
-    }
+  // Betreiber
+  bTitel: "Betrieb",
+  bUnter: "Konten und Kreise. Termine und Inhalte stehen hier bewusst nicht.",
+  bPersonen: "Personen",
+  bAktiv7: "aktiv, 7 Tage",
+  bKreise: "Kreise",
+  bGesperrt: "gesperrt",
+  bKonten: "Konten",
+  bName: "Name", bMail: "E-Mail", bZuletzt: "Zuletzt da", bStatus: "Status",
+  bAktiv: "aktiv",
+  bSperren: "Sperren", bFreigeben: "Freigeben",
+  bDarfKreise: "Kreise anlegen",
+  bJa: "ja", bNein: "nein",
+  bHinweis: "Sperren wirkt beim nächsten Laden der App. Wer sofort raus soll, " +
+            "wird zusätzlich in der Firebase Console unter Authentication " +
+            "deaktiviert.",
+  bAlleKreise: "Alle Kreise, die du siehst",
+  bOffen: "{n} offen",
+  bFehler: "Konnte nicht laden: {code}"
+},
 
-    // ================= NACHRICHTEN =================
-    match /nachrichten/{nachrichtId} {
-      allow read, delete: if angemeldet() && (
-                            resource.data.anUid == meineUid()
-                            || resource.data.vonUid == meineUid()
-                          );
+/* ================================ ARABISCH ================================ */
+ar: {
+  wochentage: ["الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت","الأحد"],
+  kurzTage:   ["إث","ثل","أر","خم","جم","سب","أح"],
+  monate: ["يناير","فبراير","مارس","أبريل","مايو","يونيو",
+           "يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"],
 
-      allow create: if angemeldet()
-                    && request.resource.data.vonUid == meineUid()
-                    && request.resource.data.anUid is string;
+  datLang: "{wt}، {tag} {monat}",
+  datKurz: "{wt}، {tag}/{monat}",
 
-      allow update: if angemeldet()
-                    && resource.data.anUid == meineUid()
-                    && request.resource.data.diff(resource.data)
-                       .affectedKeys().hasOnly(['gelesen']);
-    }
 
-    // ================= ALLES ANDERE =================
-    match /{document=**} {
-      allow read, write: if false;
-    }
+  planNiemand: "لا أحد مسجَّل اليوم.",
+  planBelegt: "مشغول",
+  planIch: "أنا",
+  planGanzerTag: "بدون وقت",
+  planJetzt: "الآن",
+  planFrei: "متاح",
+  planBuchen: "حجز هذا الوقت",
+  planVergeben: "محجوز",
+  planEngerZeigen: "أضيق",
+  planWeiterZeigen: "أوسع",
+
+  kEinstellungen: "الإعدادات",
+  kBelegung: "كيف يُوزَّع الوقت",
+  kParallel: "في الوقت نفسه",
+  kExklusiv: "شخص واحد فقط",
+  kBelegungHinweis: "في الوقت نفسه: يمكن لعدة أشخاص العمل في الوقت ذاته، مثل السائقين " +
+                    "في وردية. شخص واحد فقط: الفترة الزمنية تخص شخصاً واحداً، مثل دروس القيادة.",
+  kArten: "أنواع المواعيد",
+  kArtenHinweis: "ما يتكرر في هذه الدائرة. عندها يكفي ضغطة واحدة عند إنشاء موعد، " +
+                 "ويبقى بإمكانك كتابة شيء آخر.",
+  kArtName: "التسمية",
+  kArtNameBsp: "درس قيادة، نظري، وردية",
+  kArtDauer: "المدة بالدقائق",
+  kArtHinzu: "إضافة",
+  kArtKeine: "لا يوجد نوع مواعيد بعد.",
+  kZeiten: "أوقات العمل",
+  kZeitenHinweis: "متى يُعمل في هذه الدائرة أصلاً. الخطة تعرض هذا النطاق فقط، " +
+                  "وفي وضع «شخص واحد فقط» تنشأ منه الفترات الزمنية.",
+  kZeitHinzu: "إضافة وقت",
+  kZeitKeine: "لم تُحدَّد أوقات عمل، والخطة تعرض اليوم كاملاً.",
+  kSpeichern: "حفظ الإعدادات",
+  kGespeichert: "تم الحفظ.",
+  kNurVerwalter: "المشرف وحده يستطيع تغيير هذا.",
+  kDauerFehlt: "أدخل التسمية والمدة.",
+  kZeitFehlt: "اختر أيام الأسبوع والأوقات.",
+
+  slBelegt: "هذا الوقت محجوز بالفعل. اختر فترة أخرى.",
+  slFrei: "{n} متاحة",
+  slAlleWeg: "كل الفترات محجوزة.",
+  slNimm: "حجز",
+  slDein: "لك",
+
+  nmTitel: "ما اسمك؟",
+  nmUnter: "الاسم يظهر في دوائرك. أما بريدك الإلكتروني فلا يراه بقية الأعضاء.",
+  nmFeld: "الاسم",
+  nmBsp: "الاسم الأول واسم العائلة",
+  nmWeiter: "متابعة",
+  nmFehlt: "من فضلك أدخل اسماً.",
+  nmAendern: "تغيير الاسم",
+
+
+  nBeigetreten: "أصبح الآن في دائرة {kreis}",
+  nWillkommen: "أنت الآن في دائرة {kreis}",
+  eiFertig: "نسخ نص الدعوة",
+  eiKopiert: "تم النسخ. أرسل النص إلى {mail}.",
+  eiText: "دعوتك إلى Orbyx: {link}\n\n" +
+          "سجّل الدخول هناك ببريد {mail}، وعندها تصبح في دائرة «{kreis}». " +
+          "لا شيء آخر عليك فعله.",
+  eiNochNicht: "ادعُ شخصاً أولاً.",
+
+  spruch: "تنظيم لكل ما يجري في وقت واحد.",
+  anmelden: "تسجيل الدخول عبر Google",
+  anmeldenFehl: "فشل تسجيل الدخول: {code}",
+  gesperrt: "هذا الحساب محظور. تواصل مع المشغّل.",
+
+  suchen: "بحث",
+  terminFinden: "إيجاد موعد",
+  kreise: "الدوائر",
+  nachrichten: "الرسائل",
+  konto: "الحساب",
+  neuerEintrag: "إدخال جديد",
+
+  vTag: "اليوم", vWoche: "الأسبوع", vMonat: "الشهر",
+  vAufgaben: "المهام", vListe: "القائمة",
+  fAlles: "الكل", fTermine: "المواعيد فقط", fAufgaben: "المهام فقط",
+
+  heute: "اليوم", vergangen: "مضى",
+  woche: "الأسبوع", wasAnsteht: "ما هو قادم", naechste30: "الثلاثون يوماً القادمة",
+  zurueck: "السابق", weiter: "التالي",
+
+  nichtsTag: "لا يوجد شيء في هذا اليوم.",
+  nichtsTagFeiertag: "{name} – لا يوجد شيء مسجَّل.",
+  nichtsGeplant: "لا يوجد شيء مسجَّل.",
+  keineAufgaben: "لا توجد مهام مفتوحة.",
+  nichts30: "لا يوجد شيء في الثلاثين يوماً القادمة.",
+  frei: "فارغ",
+  tippe2: "اكتب حرفين على الأقل.",
+  nichtsGefunden: "لا نتائج لـ «{wort}».",
+  sucheLaeuft: "جارٍ البحث …",
+  ladeFehler: "تعذّر التحميل: {code}",
+  ladeHinweis: "إذا ظهر «permission-denied» فالقواعد لم تُنشر بعد. " +
+               "وإذا ظهر «failed-precondition» فالفهرس ناقص، والرابط في وحدة التحكم.",
+
+  aTermine: "المواعيد",
+  aAufgaben: "المهام",
+  aOffenFrueher: "ما زال مفتوحاً من قبل",
+  aUeberfaellig: "متأخر",
+  aHeuteFaellig: "مستحق اليوم",
+  aDieseWoche: "هذا الأسبوع",
+  aWiederkehrend: "متكرر اليوم",
+  aSpaeter: "لاحقاً",
+  aOhneFrist: "بدون موعد نهائي",
+  aErledigt: "أُنجز مؤخراً",
+  aTreffer: "{n} نتيجة",
+  aZugewiesen: "مُسنَد إليك",
+
+  fristWar: "كان الموعد النهائي {datum}",
+  fristSpaet: "متأخر {n} يوم",
+  fristHeute: "مستحق اليوم",
+  fristMorgen: "مستحق غداً",
+  fristBald: "مستحق خلال {n} يوم",
+  fristDatum: "الموعد النهائي {datum}",
+  vonPerson: "من {name}",
+  serie: "متكرر",
+  abhaken: "تعليم المهمة كمنجزة",
+  loeschen: "حذف",
+
+  zStatus: "الردود",
+  zZugesagt: "موافق",
+  zAbgesagt: "معتذر",
+  zOffen: "بانتظار الرد",
+  zZusagen: "موافقة",
+  zAbsagen: "اعتذار",
+  zWartet: "{n} بانتظار الرد",
+  zAlleZu: "الجميع وافق",
+  zUebersicht: "وافق {zu} من {alle}",
+
+  fNeu: "إدخال جديد",
+  fBearbeiten: "تعديل الإدخال",
+  fWasSteht: "ما الذي ستضيفه؟",
+  fSerieHinweis: "التعديلات تسري على كل التكرارات.",
+  fTermin: "موعد", fAufgabe: "مهمة",
+  fEinmal: "مرة واحدة", fSerie: "يتكرر",
+  fTitel: "العنوان", fTitelBsp: "طبيب الأسنان، تسوّق، محاضرة",
+  fDatum: "التاريخ", fErsterTag: "اليوم الأول", fGeplantAm: "مخطط ليوم",
+  fVon: "من", fBis: "إلى", fUhrzeitOpt: "الوقت (اختياري)",
+  fWochentage: "في أي أيام الأسبوع",
+  fBisEinschl: "حتى تاريخ شامل",
+  fOhneFeiertage: "التوقف في العطل الرسمية",
+  fOhneFerien: "التوقف في العطل المدرسية",
+  fNrw: "العطل الرسمية والمدرسية حسب ولاية نوردراين فيستفالن.",
+  fFrist: "الموعد النهائي (اختياري)",
+  fOrt: "المكان (اختياري)", fOrtBsp: "المكتب، عبر الإنترنت، المنزل",
+  fNotiz: "ملاحظة", fOptional: "اختياري",
+  fTeilen: "المشاركة مع أي دوائر",
+  fTeilenHinweis: "بدون اختيار لن يرى الإدخال سواك. دوائرك ترى دائماً أن الوقت " +
+                  "مشغول، لكنها ترى التفاصيل فقط في الإدخالات المشتركة.",
+  fZuweisen: "إسناد إلى",
+  fZuweisenHinweis: "من تختارهم يصلهم طلب ويمكنهم الموافقة أو الاعتذار. " +
+                    "وسترى من ردّ.",
+  fTagAbsagen: "إلغاء يوم {datum}",
+  abbrechen: "إلغاء", speichern: "حفظ", schliessen: "إغلاق",
+
+  eTitelDatum: "العنوان والتاريخ مطلوبان.",
+  eStartzeit: "الموعد يحتاج وقت بداية.",
+  eEnde: "يجب أن تكون النهاية بعد البداية.",
+  eFrist: "الموعد النهائي قبل اليوم المخطط.",
+  eWochentag: "اختر يوماً واحداً على الأقل.",
+  eSerienende: "التكرار يحتاج تاريخ انتهاء.",
+  eSerieVor: "تاريخ الانتهاء قبل اليوم الأول.",
+  eSpeichern: "فشل الحفظ: {code}",
+  eLoeschenFrage: "حذف هذا الإدخال؟",
+  eSerieLoeschen: "حذف كل تكرارات «{titel}»؟\n\nإذا أردت إلغاء هذا اليوم فقط: " +
+                  "ألغِ، ثم اضغط على الإدخال واختر «إلغاء هذا اليوم».",
+
+  kTitel: "الدوائر",
+  kUnter: "الدائرة مجموعة تخطط معاً. العائلة، العمل، الزبائن. " +
+          "يمكن لأي شخص أن يكون في عدة دوائر.",
+  kKeine: "لست في أي دائرة بعد. أنشئ واحدة بالأسفل وادعُ أشخاصاً.",
+  kNeuer: "إنشاء دائرة جديدة",
+  kName: "الاسم", kNameBsp: "العائلة، الفريق، الزبائن …",
+  kFarbe: "اللون",
+  kArt: "النوع",
+  kArtKreis: "دائرة",
+  kArtStern: "نجمة",
+  kArtHinweis: "في الدائرة يرى الجميع أوقات الجميع المشغولة. في النجمة يرى " +
+               "الأعضاء أوقاتك أنت فقط، ولا يرون بعضهم. للزبائن أو الطلاب " +
+               "أو السائقين اختر النجمة.",
+  kAnlegen: "إنشاء",
+  kEinladen: "دعوة",
+  kVerwalter: "مشرف",
+  kDu: "(أنت)",
+  kWartet: "بالانتظار",
+  kEingeladen: "مدعو",
+  kEingeladenVerw: "مدعو كمشرف",
+  kZurueckziehen: "سحب الدعوة",
+  kZurueckFrage: "سحب الدعوة المرسلة إلى {mail}؟",
+  kEntfernen: "إزالة",
+  kEntfernenFrage: "إزالة {name} من «{kreis}»؟",
+  kVerlassen: "مغادرة الدائرة",
+  kVerlassenFrage: "مغادرة الدائرة «{kreis}»؟",
+  kLoeschen: "حذف الدائرة",
+  kLoeschenFrage: "حذف الدائرة «{kreis}» فعلاً؟\n\nالمواعيد تبقى، لكن لن يرى " +
+                  "أحد مواعيد الآخر بعد الآن. لا يمكن التراجع عن هذا.",
+  kNachricht: "رسالة",
+  kDarfNicht: "لا تملك صلاحية إنشاء الدوائر. يمكن للمشغّل تفعيلها لك.",
+  kUnbekannt: "غير معروف",
+  kNameFehlt: "أعطِ الدائرة اسماً.",
+
+  eiTitel: "دعوة",
+  eiIn: "إلى الدائرة {kreis}",
+  eiMail: "البريد الإلكتروني",
+  eiAlsVerwalter: "يمكنه دعوة أشخاص إلى هذه الدائرة",
+  eiHinweis: "يجب أن يسجّل الشخص الدخول بهذا البريد بالذات. وما إن يفتح التطبيق " +
+             "حتى يصبح داخل الدائرة، دون أن يضغط شيئاً.",
+  eiSenden: "إرسال الدعوة",
+  eiKeineMail: "هذا لا يبدو بريداً إلكترونياً.",
+  eiSchonDrin: "أنت موجود بالفعل.",
+  eiErfolg: "تمت الدعوة. سينضم {mail} فور تسجيل الدخول.",
+
+  tfTitel: "إيجاد موعد",
+  tfUnter: "يعرض الفترات التي يكون فيها كل المختارين متفرغين.",
+  tfMitWem: "مع من",
+  tfVon: "من", tfBis: "إلى",
+  tfFrueh: "لا قبل", tfSpaet: "لا بعد",
+  tfDauer: "أقل مدة",
+  tfMin: "{n} دقيقة", tfStd: "{n} ساعة",
+  tfSuchen: "ابحث عن الأوقات المتاحة",
+  tfEintragen: "تسجيل",
+  tfNiemand: "لا أحد في دوائرك بعد. أنشئ دائرة وادعُ شخصاً.",
+  tfKeine: "لا توجد فترة مشتركة في هذا المدى. جرّب مدى أطول أو مدة أقصر.",
+  tfAlleFrei: "الجميع متفرغ: {namen}",
+  tfZeitraum: "تحقق من المدى الزمني.",
+  tfUhrzeiten: "تحقق من الأوقات.",
+  tfZuLang: "ستون يوماً كحد أقصى في المرة الواحدة.",
+
+  nTitel: "الرسائل",
+  nUnter: "ما أرسله إليك الآخرون أو شاركوه معك.",
+  nKeine: "لا توجد رسائل.",
+  nGelesen: "مقروء",
+  nAlleGelesen: "تعليم الكل كمقروء",
+  nAntworten: "رد",
+  nHatGeteilt: "شارك «{titel}» مع {kreis}",
+  nHatZugewiesen: "أسند إليك «{titel}»",
+  nHatZugesagt: "وافق على «{titel}»",
+  nHatAbgesagt: "اعتذر عن «{titel}»",
+  nGerade: "الآن",
+  nVorMin: "قبل {n} دقيقة",
+  nVorStd: "قبل {n} ساعة",
+  nJemand: "شخص ما",
+
+  sTitel: "كتابة رسالة",
+  sAn: "إلى {name}",
+  sText: "النص", sTextBsp: "ما الموضوع؟",
+  sSenden: "إرسال",
+  sGesendet: "تم الإرسال.",
+
+  koTitel: "حسابي",
+  koSprache: "اللغة",
+  koZahlen: "أرقامك",
+  koTermine: "مواعيد",
+  koOffen: "مهام مفتوحة",
+  koUeberfaellig: "متأخرة",
+  koSerien: "تكرارات",
+  koKreise: "دوائر",
+  koGeteilt: "مشترك",
+  koAbmelden: "تسجيل الخروج",
+
+  bTitel: "التشغيل",
+  bUnter: "الحسابات والدوائر. المواعيد والمحتويات غير معروضة هنا عن قصد.",
+  bPersonen: "أشخاص",
+  bAktiv7: "نشط، 7 أيام",
+  bKreise: "دوائر",
+  bGesperrt: "محظور",
+  bKonten: "الحسابات",
+  bName: "الاسم", bMail: "البريد", bZuletzt: "آخر ظهور", bStatus: "الحالة",
+  bAktiv: "نشط",
+  bSperren: "حظر", bFreigeben: "رفع الحظر",
+  bDarfKreise: "إنشاء الدوائر",
+  bJa: "نعم", bNein: "لا",
+  bHinweis: "الحظر يسري عند التحميل التالي للتطبيق. لإخراج شخص فوراً، عطّل " +
+            "حسابه أيضاً في Firebase Console ضمن Authentication.",
+  bAlleKreise: "كل الدوائر التي تراها",
+  bOffen: "{n} بانتظار الرد",
+  bFehler: "تعذّر التحميل: {code}"
+}
+
+};
+
+/* ===================================================================
+   Werkzeug
+   =================================================================== */
+
+let aktuelleSprache = "de";
+
+export function setzeSprache(code) {
+  aktuelleSprache = TEXTE[code] ? code : "de";
+  return aktuelleSprache;
+}
+export function holeSprache() { return aktuelleSprache; }
+export function istRTL() { return !!(SPRACHEN[aktuelleSprache] || {}).rtl; }
+
+/** Text holen. Platzhalter wie {n} werden ersetzt.
+ *  Fehlt ein Schlüssel in der Sprache, wird Deutsch genommen. */
+export function t(schluessel, werte) {
+  const satz = (TEXTE[aktuelleSprache] || {})[schluessel]
+            ?? (TEXTE.de[schluessel])
+            ?? schluessel;
+  if (typeof satz !== "string" || !werte) return satz;
+  return satz.replace(/\{(\w+)\}/g, (ganz, name) =>
+    werte[name] !== undefined ? werte[name] : ganz);
+}
+
+/** Listen wie Wochentage und Monate */
+export function liste(schluessel) {
+  return (TEXTE[aktuelleSprache] || {})[schluessel] || TEXTE.de[schluessel] || [];
+}
+
+/** Sprache aus dem Browser raten, falls noch keine gewählt wurde */
+export function spracheRaten() {
+  const roh = (navigator.languages || [navigator.language || "de"]);
+  for (const l of roh) {
+    const kurz = String(l).toLowerCase().split("-")[0];
+    if (TEXTE[kurz]) return kurz;
   }
+  return "de";
 }
