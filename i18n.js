@@ -182,6 +182,13 @@ de: {
   lgFerien: "Schulferien",
 
 
+  kArtNameFehlt: "Gib der Terminart erst einen Namen.",
+  kArtNameDoppelt: "Diesen Namen gibt es schon. Zwei Arten mit demselben Namen kann der Plan nicht auseinanderhalten.",
+  kArtOhneZeit: "bekommt keine Zeit",
+  kArtDazu: "„{name}“ ist in der Liste. Nicht vergessen: unten speichern.",
+  kPauseDazu: "Pause in der Liste. Nicht vergessen: unten speichern.",
+  kZeitDazu: "Arbeitszeit in der Liste. Nicht vergessen: unten speichern.",
+
   // ---- Die drei Schritte beim Einrichten ----
   kSchritt1: "Schritt 1 · Arbeitszeiten",
   kSchritt2: "Schritt 2 · Pausen",
@@ -603,6 +610,13 @@ ar: {
   lgFeiertag: "عطلة رسمية",
   lgFerien: "عطلة مدرسية",
 
+
+  kArtNameFehlt: "أعطِ نوع الموعد اسماً أولاً.",
+  kArtNameDoppelt: "هذا الاسم موجود مسبقاً. لا تستطيع الخطة التمييز بين نوعين بالاسم نفسه.",
+  kArtOhneZeit: "لا يحصل على وقت",
+  kArtDazu: "أُضيف «{name}» إلى القائمة. لا تنسَ الحفظ في الأسفل.",
+  kPauseDazu: "أُضيفت الاستراحة. لا تنسَ الحفظ في الأسفل.",
+  kZeitDazu: "أُضيف وقت العمل. لا تنسَ الحفظ في الأسفل.",
 
   kSchritt1: "الخطوة ١ · أوقات العمل",
   kSchritt2: "الخطوة ٢ · الاستراحات",
