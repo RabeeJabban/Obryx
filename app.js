@@ -419,6 +419,62 @@ function belegtFuerListe() {
 function kreisVon(id) { return meineKreise.find((k) => k.id === id) || null; }
 
 /* ===================================================================
+   WER DARF WAS
+   ------------------------------------------------------------------
+   Das Recht hängt nicht am Konto, sondern an der Gruppe.
+
+   Service-Gruppe: der Verwalter richtet ein, plant und weist zu.
+                   Mitglieder buchen und sagen ab, mehr nicht.
+   Offene Gruppe:  alle planen gleichberechtigt, so ist ein Team gemeint.
+
+   Und wer nirgends planen darf und auch keine Gruppe anlegen kann,
+   braucht die halbe App nicht. Der bekommt die schlanke Fassung:
+   Terminart wählen, freie Zeit suchen, nehmen, absagen. Fertig.
+   =================================================================== */
+
+function darfPlanen(k) {
+  if (!k) return !nurBuchen();
+  return binVerwalter(k) || !istStern(k);
+}
+function nurBuchen() {
+  if (darfKreiseAnlegen()) return false;
+  return !meineKreise.some((k) => darfPlanen(k));
+}
+
+/* Die Oberfläche richtet sich nach der Rolle. Wer nur bucht, braucht
+   weder Wochenplan noch Aufgaben noch einen Plus-Knopf: für ihn ist
+   die App eine Liste freier Zeiten, mehr soll sie auch nicht sein. */
+function richteOberflaecheEin() {
+  const schlank = nurBuchen();
+  document.body.classList.toggle("schlank", schlank);
+  [...$("nav").children].forEach((b) => {
+    b.classList.toggle("versteckt", schlank && b.dataset.v !== "tag");
+  });
+  $("neuBtn").classList.toggle("versteckt", schlank);
+  $("findenBtn").classList.toggle("versteckt", schlank);
+  if (schlank) {
+    if (ansicht !== "tag") { ansicht = "tag"; merke("ansicht", "tag"); }
+    if (!planKreis && meineKreise.length) {
+      planKreis = meineKreise[0].id;
+      merke("planKreis", planKreis);
+    }
+  }
+}
+
+/* Was in dieser Ansicht zu dieser Gruppe gehört */
+function anTagImKreis(tag, k) {
+  return anTag(tag).filter((e) => (e.kreisIds || []).includes(k.id));
+}
+/* Meine eigene Zeit, die NICHT zu dieser Gruppe gehört. Sie steht
+   blass im Hintergrund: man sieht, dass man belegt ist, aber nicht
+   womit, und die Gruppe bleibt die Hauptsache. */
+function privatAnTag(tag, k) {
+  return anTag(tag).filter((e) =>
+    !(e.kreisIds || []).includes(k.id) &&
+    (e.ownerId === nutzer.uid || (e.zugewiesen || []).includes(nutzer.uid)));
+}
+
+/* ===================================================================
    ZEITEN EINES ORBITS
    ------------------------------------------------------------------
    zeiten:  [{tage:[0..6], von:"17:00", bis:"22:00"}]   Rahmen für den Plan
@@ -643,6 +699,7 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 function starteAlles() {
+  richteOberflaecheEin();
   starteKreise();
   starteEintraege();
   starteBelegt();
@@ -838,6 +895,7 @@ function starteKreise() {
       alleNutzer[nutzer.uid] = meinSteckbrief();
 
       if (planKreis && !kreisVon(planKreis)) planKreis = "";
+      richteOberflaecheEin();
       zeichne();
       starteSlots();
       await ladeKreisinfo();
@@ -1255,7 +1313,7 @@ function maleSeiteOrbits() {
     });
     box.appendChild(b);
   };
-  mach("", t("planIch"), "var(--akzent)");
+  if (!nurBuchen()) mach("", t("planIch"), "var(--akzent)");
   meineKreise.forEach((k) => mach(k.id, k.name, k.farbe));
 }
 
@@ -1286,6 +1344,18 @@ function maleSeiteOffen() {
   });
 }
 function marke(text, frei) { return el("span", "tagMarke" + (frei ? " frei" : ""), text); }
+
+/* Kurze Rückmeldung unten am Rand. Ein alert() reißt den Arbeitsfluss
+   auseinander, für ein „ist vergeben" ist das zu viel. */
+let meldeZeit = null;
+function melde(text) {
+  const box = $("melder");
+  if (!box) return;
+  box.textContent = text;
+  box.classList.remove("versteckt");
+  if (meldeZeit) clearTimeout(meldeZeit);
+  meldeZeit = setTimeout(() => box.classList.add("versteckt"), 3200);
+}
 
 function kopfTag() {
   $("zeitTitel").textContent = tagTitel(anker);
@@ -1497,6 +1567,28 @@ function zeigeFremd(e, tag) {
   }
 }
 
+/* Die kleine Ansicht für eine eigene Buchung. Absagen ist jederzeit
+   erlaubt: eine Frist würde nur dazu führen, dass niemand absagt und
+   der Platz leer bleibt. */
+async function zeigeBuchung(e, tag) {
+  const zr = zeitraum(e);
+  const k = meineKreise.find((x) => (e.kreisIds || []).includes(x.id));
+  const zeilen = [
+    e.titel,
+    zr ? kurzDatum(tag || e.datum) + ", " + ausMinuten(zr.von) + " – " + ausMinuten(zr.bis) : "",
+    k ? k.name : "", e.ort || ""
+  ].filter(Boolean);
+  if (!confirm(zeilen.join("\n") + "\n\n" + t("abAbsagenFrage"))) return;
+  try {
+    const b = writeBatch(db);
+    b.delete(doc(db, "eintraege", e.id));
+    b.delete(doc(db, "belegt", e.id));
+    if (e.slotId) b.delete(doc(db, "slots", e.slotId));
+    await b.commit();
+    melde(t("abAbgesagt"));
+  } catch (err) { alert(t("eSpeichern", { code: err.code || err.message })); }
+}
+
 /* ---------- Tagesplan ---------- */
 
 function maleTag(box) {
@@ -1505,11 +1597,15 @@ function maleTag(box) {
 
   box.appendChild(kreisWahlLeiste());
 
+  // Steht eine Gruppe oben, dann ist das die Gruppenansicht. Was mit
+  // ihr nichts zu tun hat, gehört hier auch nicht hin.
+  const gehoert = (e) => !k || (e.kreisIds || []).includes(k.id);
+
   // Offene Aufgaben aus der Vergangenheit. Die dürfen nicht untergehen,
   // nur weil ihr Tag vorbei ist.
   const frueher = filter === "termin" ? [] : meineEintraege.filter((e) =>
     e.typ === "task" && !istSerie(e) && e.status === "offen" &&
-    e.datum < tag && e.ownerId === nutzer.uid)
+    e.datum < tag && e.ownerId === nutzer.uid && gehoert(e))
     .sort((a, b) => (a.frist || "9999").localeCompare(b.frist || "9999"));
 
   if (frueher.length) {
@@ -1520,7 +1616,7 @@ function maleTag(box) {
   }
 
   // Aufgaben ohne Uhrzeit stehen als Streifen über dem Plan
-  const ohne = sortiert(anTag(tag).filter((e) => !e.start));
+  const ohne = sortiert(anTag(tag).filter((e) => !e.start && gehoert(e)));
   if (ohne.length) {
     const z = el("div", "ohneZeit");
     ohne.forEach((e) => z.appendChild(aufgabenChip(e, tag)));
@@ -1580,7 +1676,7 @@ function kreisWahlLeiste() {
     b.addEventListener("click", () => { planKreis = id; merke("planKreis", id); zeichne(); });
     z.appendChild(b);
   };
-  mach("", t("planIch"));
+  if (!nurBuchen()) mach("", t("planIch"));
   meineKreise.forEach((k) => mach(k.id, k.name));
   return z;
 }
@@ -1618,7 +1714,7 @@ function malePersonenPlan(box, tag, k) {
   const alleStuecke = [];
   leute.forEach((u) => jePerson.set(u, []));
 
-  anTag(tag).forEach((e) => {
+  (k ? anTagImKreis(tag, k) : anTag(tag)).forEach((e) => {
     const zr = zeitraum(e);
     if (!zr) return;
     const wer = new Set([e.ownerId, ...(e.zugewiesen || [])]);
@@ -1630,9 +1726,20 @@ function malePersonenPlan(box, tag, k) {
     });
   });
 
+  // Meine eigene Zeit von außerhalb der Gruppe: blass, ohne Titel.
+  // So sieht man beim Planen, wann man selbst schon weg ist.
+  if (k) {
+    privatAnTag(tag, k).forEach((e) => {
+      const zr = zeitraum(e);
+      if (!zr) return;
+      jePerson.get(nutzer.uid).push({ ...zr, belegt: true, blass: true });
+      alleStuecke.push(zr);
+    });
+  }
+
   // Belegte Zeiten anderer, die ich nicht im Klartext sehe
   const schonDa = new Set();
-  jePerson.forEach((l) => l.forEach((x) => schonDa.add(x.e.id)));
+  jePerson.forEach((l) => l.forEach((x) => { if (x.e) schonDa.add(x.e.id); }));
   belegtFremd.forEach((x) => {
     if (!laeuftAnTag(x, tag)) return;
     if (!jePerson.has(x.ownerId)) return;
@@ -1667,8 +1774,8 @@ function malePersonenPlan(box, tag, k) {
     stuecke.forEach((x) => {
       let b;
       if (x.belegt) {
-        b = el("div", "balken belegt");
-        b.appendChild(el("b", null, t("planBelegt")));
+        b = el("div", "balken belegt" + (x.blass ? " blass" : ""));
+        b.appendChild(el("b", null, x.blass ? t("planAnderswo") : t("planBelegt")));
         b.appendChild(el("small", null, ausMinuten(x.von) + "–" + ausMinuten(x.bis)));
       } else {
         b = eintragsBalken(x.e, tag, g, u !== nutzer.uid || (x.e.zugewiesen || []).length > 0);
@@ -1690,8 +1797,10 @@ function malePersonenPlan(box, tag, k) {
 function maleSlotPlan(box, tag, k) {
   const fenster = fensterFuer(k, tag);
   const belegteSlots = slots.filter((x) => x.kreisId === k.id && x.datum === tag);
-  const eintraege = anTag(tag).filter((e) => (e.kreisIds || []).includes(k.id));
+  const eintraege = anTagImKreis(tag, k);
   const pausen = pausenAnTag(k, tag);
+  const plane = darfPlanen(k);
+  const privat = privatAnTag(tag, k).map(zeitraum).filter(Boolean);
 
   // Spuren: jede Terminart mit Raster, dazu eine für alles Übrige
   const arten = (k.arten || []).filter((a) => plaetzeVon(k, a) >= 1);
@@ -1699,7 +1808,7 @@ function maleSlotPlan(box, tag, k) {
   const rest = eintraege.filter((e) => !arten.some((a) => a.name === e.artName));
   if (rest.length || !spuren.length) spuren.push({ art: null, name: k.name });
 
-  const stuecke = [...fenster, ...pausen];
+  const stuecke = [...fenster, ...pausen, ...privat];
   eintraege.forEach((e) => { const zr = zeitraum(e); if (zr) stuecke.push(zr); });
 
   const f = tagFenster(tag, k, stuecke);
@@ -1739,37 +1848,55 @@ function maleSlotPlan(box, tag, k) {
       spalte.appendChild(b);
     });
 
-    // Freie und volle Zeitfenster dieser Terminart
+    /* Meine eigene Zeit von außerhalb der Gruppe, blass über alle Spuren.
+       Sie gehört zu keiner Terminart, sie sagt nur: da bin ich weg. */
+    privat.forEach((zr) => {
+      const b = el("div", "balken belegt blass hinten");
+      // Beschriftet wird nur die erste Spur, sonst steht in jeder Spalte
+      // dasselbe Wort über den Uhrzeiten der freien Fenster.
+      if (i === 0) b.appendChild(el("b", null, t("planAnderswo")));
+      setzeBalken(b, { ...zr, versatz: 0, anteil: 100 }, g);
+      spalte.appendChild(b);
+    });
+
+    /* Freie Fenster und eingetragene Termine liegen in derselben Spur.
+       Deshalb gehen sie zusammen durch verteile(): bei vier Plätzen
+       steht der gebuchte Fahrer neben dem Rest, statt ihn zu verdecken. */
+    const teile = [];
+
     if (sp.art) {
       fenster.filter((x) => x.art === sp.art).forEach((x) => {
-        const meins = belegteSlots.some((y) =>
-          minuten(y.start) === x.von && y.uid === nutzer.uid);
-        if (meins) return;                       // steht gleich als Eintrag da
         const frei = freiePlaetze(x, belegteSlots);
-        const b = el("button", "balken slot" + (frei ? "" : " voll"));
-        b.type = "button";
-        b.textContent = frei === 0 ? t("slVoll")
-          : (x.plaetze > 1 ? ausMinuten(x.von) + " · " + t("slPlaetze", { frei, alle: x.plaetze })
-                           : ausMinuten(x.von));
-        setzeBalken(b, { ...x, versatz: 0, anteil: 100 }, g);
-        if (frei > 0) b.addEventListener("click", () => buchen(k, tag, x));
-        else b.disabled = true;
-        spalte.appendChild(b);
+        teile.push({ von: x.von, bis: x.bis, fenster: x, frei });
       });
     }
-
-    // Die Einträge dieser Spur
-    const meine = sp.art
-      ? eintraege.filter((e) => e.artName === sp.art.name)
-      : rest;
-    verteile(meine.map((e) => ({ ...zeitraum(e), e }))
-                  .filter((x) => x.von !== undefined))
-      .forEach((x) => {
-        const b = eintragsBalken(x.e, tag, g, true);
-        setzeBalken(b, x, g);
-        spalte.appendChild(b);
+    (sp.art ? eintraege.filter((e) => e.artName === sp.art.name) : rest)
+      .forEach((e) => {
+        const zr = zeitraum(e);
+        if (zr) teile.push({ ...zr, e });
       });
+
+    verteile(teile).forEach((x) => {
+      let b;
+      if (x.e) {
+        b = eintragsBalken(x.e, tag, g, true);
+      } else {
+        b = el("button", "balken slot" + (x.frei ? "" : " voll"));
+        b.type = "button";
+        b.textContent = x.frei === 0 ? t("slVoll")
+          : (x.fenster.plaetze > 1
+              ? ausMinuten(x.von) + " · " + t("slPlaetze", { frei: x.frei, alle: x.fenster.plaetze })
+              : ausMinuten(x.von));
+        // Wer plant, verteilt das Fenster. Wer nicht plant, nimmt es selbst.
+        if (x.frei > 0) b.addEventListener("click", () =>
+          plane ? oeffneZuteilen(k, tag, x.fenster) : buchen(k, tag, x.fenster));
+        else b.disabled = true;
+      }
+      setzeBalken(b, x, g);
+      spalte.appendChild(b);
+    });
   });
+
 
   // Was andere belegt haben, ohne dass ich den Inhalt sehe
   const sichtbar = new Set(eintraege.map((e) => minuten(e.start)));
@@ -1819,6 +1946,81 @@ async function nimmSlot(kreisId, tag, von, dauer, plaetze, artName) {
     } catch (e) { /* Platz vergeben, nächsten versuchen */ }
   }
   return null;
+}
+
+/* ---------- Ein Zeitfenster vergeben ----------
+   Der Verwalter tippt ein freies Fenster an und sagt, wer es bekommt.
+   Den Platz nimmt er selbst, denn in der Datenbank darf nur reservieren,
+   wer auch unterschreibt. Der Termin gehört ihm und ist der Person
+   zugewiesen, die dann zusagen oder absagen kann.                      */
+
+let zuteilenKreis = null, zuteilenTag = "", zuteilenFenster = null;
+
+function oeffneZuteilen(k, tag, fenster) {
+  zuteilenKreis = k; zuteilenTag = tag; zuteilenFenster = fenster;
+  const art = fenster.art || { name: k.name };
+  $("zuUnter").textContent = t("zuUnter", {
+    art: art.name || k.name, datum: kurzDatum(tag), zeit: ausMinuten(fenster.von) });
+  $("zuFehler").textContent = "";
+
+  const box = $("zuLeute");
+  box.innerHTML = "";
+  const leute = (k.mitglieder || []).filter((u) => u !== nutzer.uid);
+  if (!leute.length) box.appendChild(el("div", "hinweis", t("zuKeine")));
+  leute.forEach((uid) => {
+    const info = (k.info || {})[uid] || alleNutzer[uid] || {};
+    const b = el("button", "person", info.name || t("kUnbekannt"));
+    b.type = "button";
+    b.addEventListener("click", () => vergib(uid, info.name || t("kUnbekannt")));
+    box.appendChild(b);
+  });
+  $("dlgZuteilen").showModal();
+}
+
+$("zuAb").addEventListener("click", () => $("dlgZuteilen").close());
+$("zuSelbst").addEventListener("click", async () => {
+  const k = zuteilenKreis, tag = zuteilenTag, f = zuteilenFenster;
+  $("dlgZuteilen").close();
+  await buchen(k, tag, f);
+});
+
+async function vergib(uid, name) {
+  const k = zuteilenKreis, tag = zuteilenTag, f = zuteilenFenster;
+  const art = f.art || { name: k.name, dauer: f.bis - f.von };
+  $("zuFehler").textContent = "";
+
+  const kennung = await nimmSlot(k.id, tag, f.von, f.bis - f.von, f.plaetze, art.name);
+  if (!kennung) { $("zuFehler").textContent = t("zuBelegt"); return; }
+
+  try {
+    const daten = {
+      ownerId: nutzer.uid, typ: "termin",
+      titel: art.name || k.name,
+      artName: art.name || "",
+      datum: tag,
+      start: ausMinuten(f.von), ende: ausMinuten(f.bis),
+      dauer: f.bis - f.von,
+      frist: "", ort: "", notiz: "",
+      wiederholung: "einmal",
+      kreisIds: [k.id], zugewiesen: [uid], zusagen: {},
+      sichtbarFuer: sichtbarFuerListe([k.id], [uid]),
+      slotId: kennung, status: "",
+      suchtext: (art.name || k.name).toLowerCase(),
+      erstelltAm: serverTimestamp()
+    };
+    const ref = await addDoc(collection(db, "eintraege"), daten);
+    await setDoc(doc(db, "belegt", ref.id), {
+      ownerId: nutzer.uid, typ: "termin", datum: tag,
+      start: daten.start, ende: daten.ende, dauer: daten.dauer,
+      wiederholung: "einmal", sichtbarFuer: belegtFuerListe()
+    });
+    meldeZugewiesen(daten.titel, [uid], ref.id);
+    $("dlgZuteilen").close();
+    melde(t("zuVergeben", { name }));
+  } catch (e) {
+    await deleteDoc(doc(db, "slots", kennung)).catch(() => {});
+    $("zuFehler").textContent = t("eSpeichern", { code: e.code || e.message });
+  }
 }
 
 async function buchen(k, tag, fenster) {
@@ -2406,6 +2608,10 @@ function naechsteStunde() {
 }
 
 function oeffneEintrag(e, tag) {
+  /* Wer nur bucht, braucht kein Formular mit Serien und Zuweisen.
+     Für ihn hat ein eigener Termin genau eine Frage: behalten oder
+     absagen. Absagen gibt den Platz sofort wieder frei. */
+  if (nurBuchen()) { if (e) zeigeBuchung(e, tag); return; }
   $("formFehler").textContent = "";
   bearbeiteId = e ? e.id : null;
   bearbeiteTag = tag || anker;
@@ -3568,7 +3774,8 @@ function baueMenueAnsichten() {
   const box = $("menueAnsichten");
   if (!box) return;
   box.innerHTML = "";
-  ANSICHTEN.forEach(([wert, schluessel]) => {
+  const nur = nurBuchen();
+  ANSICHTEN.filter(([wert]) => !nur || wert === "tag").forEach(([wert, schluessel]) => {
     const b = el("button", "menuePunkt" + (ansicht === wert ? " an" : ""), t(schluessel));
     b.type = "button";
     b.addEventListener("click", () => {
@@ -3593,6 +3800,7 @@ $("michBtn").addEventListener("click", () => {
   $("betriebBtn").classList.toggle("versteckt", !istBetreiber());
   // Suchen erscheint nur, wenn es überhaupt etwas zu suchen gibt
   $("mSuchen").classList.toggle("versteckt", !suchOrbits().length);
+  $("mUebersicht").classList.toggle("versteckt", nurBuchen());
   baueMenueAnsichten();
   $("dlgMenue").showModal();
   zeigeFassung();
