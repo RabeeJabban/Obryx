@@ -41,6 +41,7 @@ de: {
   // ---- Balkenplan ----
   planNiemand: "Heute ist niemand eingetragen.",
   planBelegt: "Belegt",
+  planAnderswo: "Anderswo",
   planIch: "Ich",
   planGanzerTag: "Ohne Uhrzeit",
   planJetzt: "jetzt",
@@ -198,6 +199,15 @@ de: {
   kRest: "Rest",
   kArtHoch: "Nach oben",
 
+  // ---- Zeitfenster zuteilen ----
+  zuTitel: "Zeitfenster vergeben",
+  zuUnter: "{art} am {datum} um {zeit}",
+  zuWer: "An wen",
+  zuSelbst: "Selbst nehmen",
+  zuKeine: "In dieser Gruppe ist sonst niemand.",
+  zuVergeben: "An {name} vergeben.",
+  zuBelegt: "Dieser Platz ist gerade weggegangen.",
+
   // ---- Freie Zeiten suchen ----
   suTitel: "Freie Zeiten suchen",
   suUnter: "Wähle die Art, dann zeigt dir Orbyx, wann noch etwas frei ist.",
@@ -216,6 +226,7 @@ de: {
   nAbgesagtFrei: "hat abgesagt, die Zeit ist wieder frei",
   nFreigeworden: "„{titel}“ am {datum} {zeit} wurde abgesagt. Die Zeit ist wieder frei.",
   abAbgesagt: "Abgesagt, die Zeit ist wieder frei.",
+  abAbsagenFrage: "Diesen Termin absagen? Die Zeit wird wieder frei.",
 
   // Marke
   spruch: "Ordnung für alles, was gleichzeitig läuft.",
@@ -471,6 +482,7 @@ ar: {
 
   planNiemand: "لا أحد مسجَّل اليوم.",
   planBelegt: "مشغول",
+  planAnderswo: "في مكان آخر",
   planIch: "أنا",
   planGanzerTag: "بدون وقت",
   planJetzt: "الآن",
@@ -606,6 +618,14 @@ ar: {
   kRest: "الباقي",
   kArtHoch: "إلى الأعلى",
 
+  zuTitel: "إسناد موعد",
+  zuUnter: "{art} في {datum} الساعة {zeit}",
+  zuWer: "لمن",
+  zuSelbst: "آخذه لنفسي",
+  zuKeine: "لا يوجد أحد آخر في هذه المجموعة.",
+  zuVergeben: "تم الإسناد إلى {name}.",
+  zuBelegt: "هذا المكان حُجز للتو.",
+
   suTitel: "البحث عن أوقات متاحة",
   suUnter: "اختر النوع، وسيعرض لك Orbyx ما تبقّى متاحاً.",
   suOrbit: "أين",
@@ -622,6 +642,7 @@ ar: {
   nAbgesagtFrei: "اعتذر، والوقت صار متاحاً من جديد",
   nFreigeworden: "تم الاعتذار عن «{titel}» في {datum} {zeit}. الوقت متاح من جديد.",
   abAbgesagt: "تم الاعتذار، والوقت متاح من جديد.",
+  abAbsagenFrage: "هل تعتذر عن هذا الموعد؟ سيصبح الوقت متاحاً من جديد.",
 
   spruch: "تنظيم لكل ما يجري في وقت واحد.",
   anmelden: "تسجيل الدخول عبر Google",
