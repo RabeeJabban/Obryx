@@ -476,39 +476,107 @@ function pausenAnTag(k, tag) {
     .filter((pz) => pz.von !== null && pz.bis !== null && pz.bis > pz.von);
 }
 
-/* Ein Zeitraum ohne die Pausen: übrig bleiben die freien Stücke */
-function ohnePausen(k, tag, von, bis) {
-  let stuecke = [{ von, bis }];
-  pausenAnTag(k, tag).forEach((pz) => {
+/* ------------------------------------------------------------------
+   Rechnen mit Zeitstücken. Ein Stück ist {von, bis} in Minuten.
+   Eine Liste ist immer aufsteigend und überschneidet sich nicht.
+
+   schnitt: was in BEIDEN Listen liegt
+   abzug:   was in a liegt und nicht in b
+   Mehr braucht die ganze Terminplanung nicht.
+   ------------------------------------------------------------------ */
+function schnitt(a, b) {
+  const raus = [];
+  a.forEach((x) => b.forEach((y) => {
+    const von = Math.max(x.von, y.von), bis = Math.min(x.bis, y.bis);
+    if (bis > von) raus.push({ von, bis });
+  }));
+  return raus.sort((p, q) => p.von - q.von);
+}
+function abzug(a, b) {
+  let stuecke = a.map((x) => ({ von: x.von, bis: x.bis }));
+  b.forEach((w) => {
     const neu = [];
     stuecke.forEach((st) => {
-      if (pz.bis <= st.von || pz.von >= st.bis) { neu.push(st); return; }
-      if (pz.von > st.von) neu.push({ von: st.von, bis: pz.von });
-      if (pz.bis < st.bis) neu.push({ von: pz.bis, bis: st.bis });
+      if (w.bis <= st.von || w.von >= st.bis) { neu.push(st); return; }
+      if (w.von > st.von) neu.push({ von: st.von, bis: w.von });
+      if (w.bis < st.bis) neu.push({ von: w.bis, bis: st.bis });
     });
     stuecke = neu;
   });
-  return stuecke;
+  return stuecke.sort((p, q) => p.von - q.von);
+}
+function ohnePausenListe(k, tag, liste) {
+  return abzug(liste, pausenAnTag(k, tag));
+}
+/* Ein Zeitraum ohne die Pausen: übrig bleiben die freien Stücke */
+function ohnePausen(k, tag, von, bis) {
+  return ohnePausenListe(k, tag, [{ von, bis }]);
+}
+
+/* Feste Zeiten oder der Rest.
+   Wer eigene Tage und Uhrzeiten eingetragen hat, meint feste Zeiten.
+   Wer nichts eingetragen hat, meint den Rest der Arbeitszeit. */
+function artModus(art) {
+  if (art && (art.modus === "fest" || art.modus === "rest")) return art.modus;
+  return (art && Array.isArray(art.tage) && art.tage.length) ? "fest" : "rest";
 }
 
 /* Alle Zeitfenster eines Orbits an einem Tag, nach Terminart getrennt.
+
+   Der Ablauf ist derselbe wie beim Einrichten: zuerst steht die
+   Arbeitszeit, davon gehen die Pausen ab, und was dann noch da ist,
+   teilen sich die Terminarten der Reihe nach.
+
+   Erst kommen die Arten mit festen Zeiten, jede nimmt sich ihr Stück
+   aus dem Übrigen. Danach kommen die Arten "der Rest", jede nimmt,
+   was die vorige liegen gelassen hat. So kann sich nie eine Stunde
+   doppelt vergeben, auch wenn jemand sich beim Eintragen vertut.
+
    Nach einer Pause fängt das Raster neu an. Sonst bliebe hinter jeder
    Pause ein angebrochener Rest liegen, den niemand buchen kann. */
 function fensterFuer(k, tag) {
   const raus = [];
-  (k.arten || []).forEach((art) => {
+  const arten = (k.arten || []);
+  const rahmen = zeitenAnTag(k, tag);
+
+  /* Ohne gepflegte Arbeitszeit gilt weiter, was bei jeder Art steht.
+     Sonst wären ältere Orbits auf einmal leer. */
+  if (!rahmen.length) {
+    arten.forEach((art) => {
+      const plaetze = plaetzeVon(k, art);
+      if (!(plaetze >= 1)) return;
+      raster(ohnePausenListe(k, tag, artZeiten(k, art, tag)), art, plaetze);
+    });
+    return raus.sort((a, b) => a.von - b.von);
+  }
+
+  let rest = ohnePausenListe(k, tag, rahmen);
+  const reihe = [...arten.filter((a) => artModus(a) === "fest"),
+                 ...arten.filter((a) => artModus(a) !== "fest")];
+
+  reihe.forEach((art) => {
+    let mein;
+    if (artModus(art) === "fest") {
+      mein = schnitt(rest, ohnePausenListe(k, tag, artZeiten(k, art, tag)));
+    } else {
+      mein = rest;
+    }
+    rest = abzug(rest, mein);
     const plaetze = plaetzeVon(k, art);
     if (!(plaetze >= 1)) return;                 // frei planbar, kein Raster
-    const dauer = Number(art.dauer) || 60;
-    artZeiten(k, art, tag).forEach((z) => {
-      ohnePausen(k, tag, z.von, z.bis).forEach((st) => {
-        for (let x = st.von; x + dauer <= st.bis; x += dauer) {
-          raus.push({ von: x, bis: x + dauer, art, plaetze });
-        }
-      });
-    });
+    raster(mein, art, plaetze);
   });
+
   return raus.sort((a, b) => a.von - b.von);
+
+  function raster(stuecke, art, plaetze) {
+    const dauer = Number(art.dauer) || 60;
+    stuecke.forEach((st) => {
+      for (let x = st.von; x + dauer <= st.bis; x += dauer) {
+        raus.push({ von: x, bis: x + dauer, art, plaetze });
+      }
+    });
+  }
 }
 
 /* Hat dieser Orbit überhaupt feste Zeitfenster */
@@ -915,6 +983,7 @@ function starteEintraege() {
       zusammenfuehren();
       nachruestenFallsNoetig();
       sichtbarkeitNachziehen();
+      abgesagteZeitenFreigeben();
     },
     (e) => {
       console.error("EIGENE Einträge:", e.code, e.message);
@@ -968,6 +1037,42 @@ async function nachruestenFallsNoetig() {
       await b.commit();
     }
   } catch (err) { console.error("Nachrüsten:", err); nachgeruestet = false; }
+}
+
+/* Eine Absage gibt die Zeit wieder frei.
+
+   Hat der Verwalter jemandem eine Stunde eingetragen und sagt die Person
+   ab, dann bleibt sonst ein Platz belegt, den niemand mehr braucht. Also
+   räumt die App des Verwalters auf, sobald ALLE Zugewiesenen abgesagt
+   haben: Zeitfenster weg, Termin weg, und eine Nachricht, damit es nicht
+   stillschweigend passiert.
+
+   Dass hier der Verwalter aufräumt und nicht der Absagende, hat einen
+   Grund: nur wer den Eintrag besitzt, darf ihn löschen. */
+let freigebenLaeuft = false;
+async function abgesagteZeitenFreigeben() {
+  if (freigebenLaeuft) return;
+  const dran = eigene.filter((e) => {
+    if (!e.slotId || e.typ !== "termin") return false;
+    const wer = e.zugewiesen || [];
+    if (!wer.length) return false;                 // meine eigene Buchung bleibt
+    return wer.every((u) => (e.zusagen || {})[u] === "nein");
+  });
+  if (!dran.length) return;
+  freigebenLaeuft = true;
+  try {
+    for (const e of dran) {
+      await deleteDoc(doc(db, "slots", e.slotId)).catch(() => {});
+      await deleteDoc(doc(db, "belegt", e.id)).catch(() => {});
+      await deleteDoc(doc(db, "eintraege", e.id)).catch(() => {});
+      await addDoc(collection(db, "nachrichten"), {
+        anUid: nutzer.uid, vonUid: nutzer.uid, vonName: meinName(),
+        art: "freigeworden", text: e.titel,
+        datum: e.datum, zeit: e.start || "",
+        gelesen: false, erstelltAm: serverTimestamp()
+      }).catch(() => {});
+    }
+  } finally { freigebenLaeuft = false; }
 }
 
 /* Ein zugewiesener Termin soll die Zeit des Zugewiesenen wirklich
@@ -1612,6 +1717,15 @@ function maleSlotPlan(box, tag, k) {
     return kopf;
   });
 
+  /* Der kurze Weg zum Termin: suchen, statt sich durch die Tage zu klicken */
+  const leiste = el("div");
+  leiste.style.cssText = "display:flex;justify-content:flex-end;margin-bottom:6px";
+  const sb = el("button", "klein gut", t("suSuchenKurz"));
+  sb.type = "button";
+  sb.addEventListener("click", () => oeffneSuchen(k));
+  leiste.appendChild(sb);
+  box.appendChild(leiste);
+
   const g = planGeruest(box, koepfe, f.vonStd, f.bisStd, spuren.length <= 3);
 
   spuren.forEach((sp, i) => {
@@ -1692,26 +1806,27 @@ function jetztLinie(g) {
    Platz noch frei ist, das entscheidet die Datenbank. Dadurch können
    nie mehr Leute auf einer Tour landen, als vorgesehen sind.           */
 
-async function buchen(k, tag, fenster) {
-  const art = fenster.art || { name: k.name, dauer: fenster.bis - fenster.von };
-  let kennung = null;
-
-  for (let platz = 1; platz <= fenster.plaetze; platz++) {
-    const versuch = slotKennung(k.id, tag, fenster.von, platz);
+async function nimmSlot(kreisId, tag, von, dauer, plaetze, artName) {
+  for (let platz = 1; platz <= Math.max(1, plaetze); platz++) {
+    const versuch = slotKennung(kreisId, tag, von, platz);
     try {
       await setDoc(doc(db, "slots", versuch), {
-        kreisId: k.id, datum: tag,
-        start: ausMinuten(fenster.von),
-        platz, dauer: fenster.bis - fenster.von,
-        artName: art.name || "",
+        kreisId, datum: tag, start: ausMinuten(von),
+        platz, dauer, artName: artName || "",
         uid: nutzer.uid, erstelltAm: serverTimestamp()
       });
-      kennung = versuch;
-      break;
+      return versuch;
     } catch (e) { /* Platz vergeben, nächsten versuchen */ }
   }
+  return null;
+}
 
-  if (!kennung) { alert(t("slBelegt")); return; }
+async function buchen(k, tag, fenster) {
+  const art = fenster.art || { name: k.name, dauer: fenster.bis - fenster.von };
+  const kennung = await nimmSlot(k.id, tag, fenster.von,
+    fenster.bis - fenster.von, fenster.plaetze, art.name);
+
+  if (!kennung) { alert(t("slBelegt")); return false; }
 
   try {
     const daten = {
@@ -1736,9 +1851,11 @@ async function buchen(k, tag, fenster) {
       start: daten.start, ende: daten.ende, dauer: daten.dauer,
       wiederholung: "einmal", sichtbarFuer: belegtFuerListe()
     });
+    return true;
   } catch (e) {
     await deleteDoc(doc(db, "slots", kennung)).catch(() => {});
     alert(t("eSpeichern", { code: e.code || e.message }));
+    return false;
   }
 }
 
@@ -2427,20 +2544,17 @@ $("formEintrag").addEventListener("submit", async (ev) => {
   const exk = meineKreise.find((k) => kreisIds.includes(k.id) && istExklusiv(k));
   let neuerSlot = null;
   if (exk && typ === "termin" && start && wiederholung === "einmal") {
-    const kennung = slotKennung(exk.id, datum, minuten(start));
-    if (!alt || alt.slotId !== kennung) {
-      try {
-        await setDoc(doc(db, "slots", kennung), {
-          kreisId: exk.id, datum, start,
-          dauer: daten.dauer || 60, uid: nutzer.uid,
-          erstelltAm: serverTimestamp()
-        });
-        neuerSlot = kennung;
-        daten.slotId = kennung;
-      } catch (err) {
-        $("formFehler").textContent = t("slBelegt");
-        return;
-      }
+    // Die Plätze stehen bei der Terminart. Bei vier Fahrern auf einer Tour
+    // wird Platz 1 bis 4 der Reihe nach probiert, genau wie beim Buchen.
+    const art = (exk.arten || []).find((a) => a.name === (gewaehlteArt || ""));
+    const plaetze = art ? plaetzeVon(exk, art) : 1;
+    const schonMeins = alt && alt.slotId &&
+      alt.slotId.startsWith(exk.id + "_" + datum + "_" + start + "_");
+    if (!schonMeins) {
+      neuerSlot = await nimmSlot(exk.id, datum, minuten(start),
+        daten.dauer || 60, plaetze, gewaehlteArt);
+      if (!neuerSlot) { $("formFehler").textContent = t("slBelegt"); return; }
+      daten.slotId = neuerSlot;
     }
   }
 
@@ -2539,6 +2653,15 @@ function zeigeKreise() {
     kopf.appendChild(p);
     kopf.appendChild(el("b", null, k.name));
     kopf.appendChild(el("span", "rolle", stern ? t("kArtStern") : t("kArtKreis")));
+
+    /* Hat der Orbit feste Zeitfenster, kann hier jeder suchen gehen.
+       Das ist der Weg eines Mitglieds zu seinem Termin. */
+    if (hatRaster(k)) {
+      const sb = el("button", "klein gut", t("suSuchenKurz"));
+      sb.type = "button";
+      sb.addEventListener("click", () => { $("dlgKreise").close(); oeffneSuchen(k); });
+      kopf.appendChild(sb);
+    }
 
     if (verwalter) {
       const eb = el("button", "klein", t("kEinstellungen"));
@@ -2733,6 +2856,7 @@ function oeffneEinstellungen(k) {
   $("einstFehler").textContent = "";
   $("einstGut").textContent = "";
   baueZeitTage();
+  setzeArtModus("fest");
   zeigeArtenListe();
   zeigeZeitenListe();
   zeigePausenListe();
@@ -2746,6 +2870,25 @@ function plaetzeText(a) {
   return p === 1 ? t("kArtEinPlatz") : t("kArtPlaetzeN", { n: p });
 }
 
+/* Feste Zeiten oder der Rest: der Schalter über den Tagen.
+   Bei "Der Rest" braucht die Art keine eigenen Zeiten, also
+   verschwinden die Felder auch. Sonst trägt man etwas ein,
+   das nachher niemand benutzt. */
+let einstModus = "fest";
+function setzeArtModus(wert) {
+  einstModus = wert === "rest" ? "rest" : "fest";
+  $("eModusFest").classList.toggle("an", einstModus === "fest");
+  $("eModusRest").classList.toggle("an", einstModus === "rest");
+  $("eArtZeitFeld").classList.toggle("versteckt", einstModus === "rest");
+}
+$("eModusFest").addEventListener("click", () => setzeArtModus("fest"));
+$("eModusRest").addEventListener("click", () => setzeArtModus("rest"));
+
+function modusText(a) {
+  if (artModus(a) === "rest") return t("kModusRest");
+  return t("kModusFest");
+}
+
 function zeigeArtenListe() {
   const box = $("artenListe");
   box.innerHTML = "";
@@ -2756,10 +2899,22 @@ function zeigeArtenListe() {
     const w = el("div", "wachs");
     w.appendChild(el("div", null, a.name));
     const tage = (a.tage || []).map((x) => K[x]).join(", ");
-    w.appendChild(el("small", null, tage
-      ? t("kArtEinZeile", { tage, von: a.von, bis: a.bis, dauer: a.dauer, plaetze: plaetzeText(a) })
-      : a.dauer + " min · " + plaetzeText(a)));
+    w.appendChild(el("small", null, artModus(a) === "rest"
+      ? t("kModusRest") + " · " + dauerText(Number(a.dauer) || 60) + " · " + plaetzeText(a)
+      : t("kArtEinZeile", { tage, von: a.von, bis: a.bis, dauer: a.dauer, plaetze: plaetzeText(a) })));
     z.appendChild(w);
+
+    /* Die Reihenfolge entscheidet, wer sich zuerst bedient.
+       Deshalb kann man eine Art nach oben schieben. */
+    if (i > 0) {
+      const hb = el("button", "klein", "↑");
+      hb.type = "button"; hb.title = t("kArtHoch");
+      hb.addEventListener("click", () => {
+        einstArten.splice(i - 1, 0, einstArten.splice(i, 1)[0]);
+        zeigeArtenListe();
+      });
+      z.appendChild(hb);
+    }
     const wb = el("button", "klein gefahr", "×");
     wb.type = "button";
     wb.addEventListener("click", () => { einstArten.splice(i, 1); zeigeArtenListe(); });
@@ -2773,17 +2928,23 @@ $("artHinzu").addEventListener("click", () => {
   const dauer = Number($("eArtDauer").value);
   const von = $("eArtVon").value, bis = $("eArtBis").value;
   const plaetze = Number($("eArtPlaetze").value) || 0;
+  const fest = einstModus === "fest";
   if (!name || !(dauer > 0)) { $("einstFehler").textContent = t("kDauerFehlt"); return; }
-  // Plätze nur sinnvoll, wenn auch Tage und Zeit feststehen
-  if (plaetze >= 1 && (!einstArtTage.length || !von || !bis || bis <= von)) {
+  // Feste Zeiten heißt: Tage und Uhrzeit müssen auch dastehen
+  if (fest && plaetze >= 1 && (!einstArtTage.length || !von || !bis || bis <= von)) {
     $("einstFehler").textContent = t("kArtTageFehlt"); return;
+  }
+  // "Der Rest" rechnet von der Arbeitszeit ab. Ohne die gibt es keinen Rest.
+  if (!fest && !einstZeiten.length) {
+    $("einstFehler").textContent = t("kRahmenFehlt"); return;
   }
   $("einstFehler").textContent = "";
   einstArten.push({
     name, dauer, plaetze,
-    tage: plaetze >= 1 ? [...einstArtTage].sort((a, b) => a - b) : [],
-    von: plaetze >= 1 ? von : "",
-    bis: plaetze >= 1 ? bis : ""
+    modus: fest ? "fest" : "rest",
+    tage: fest && plaetze >= 1 ? [...einstArtTage].sort((a, b) => a - b) : [],
+    von: fest && plaetze >= 1 ? von : "",
+    bis: fest && plaetze >= 1 ? bis : ""
   });
   $("eArtName").value = "";
   zeigeArtenListe();
@@ -3043,6 +3204,8 @@ function postText(n) {
   if (n.art === "beigetreten") return t("nBeigetreten", { kreis: n.kreisName || n.text });
   if (n.art === "angenommen")  return t("nAngenommen",  { kreis: n.kreisName || n.text });
   if (n.art === "abgelehnt")   return t("nAbgelehnt",   { kreis: n.kreisName || n.text });
+  if (n.art === "freigeworden") return t("nFreigeworden", {
+    titel: n.text, datum: n.datum ? kurzDatum(n.datum) : "", zeit: n.zeit || "" });
   return n.text;
 }
 
@@ -3238,6 +3401,159 @@ function freieFenster(belegt, von, bis, frueh, spaet, dauer) {
 }
 
 /* ===================================================================
+   FREIE ZEITEN SUCHEN
+   ------------------------------------------------------------------
+   Das eigene Fenster für Mitglieder eines Service-Orbits. Hier steht
+   keine Dauer zur Auswahl: die gehört zur Terminart und bestimmt der
+   Verwalter. Die Fahrschülerin wählt also nur, WAS sie braucht, und
+   bekommt die Zeiten, die dafür noch offen sind.
+
+   Gerechnet wird mit dem, was die App schon im Speicher hat. Darum
+   erscheint ein gerade vergebener Platz auch ohne Nachladen sofort
+   als weg, und beim Verwalter gleichzeitig als neuer Termin.
+   =================================================================== */
+
+let suchKreis = null, suchArt = null;
+
+function suchOrbits() {
+  return meineKreise.filter(hatRaster);
+}
+function suchArten(k) {
+  return (k.arten || []).filter((a) => plaetzeVon(k, a) >= 1);
+}
+
+function oeffneSuchen(k) {
+  const offen = suchOrbits();
+  suchKreis = k && hatRaster(k) ? k : (offen[0] || null);
+  suchArt = null;
+  const heut = heute();
+  $("suVon").value = heut;
+  $("suBis").value = plus(heut, 14);
+  $("suFehler").textContent = "";
+  $("suGut").textContent = "";
+  $("suErgebnis").innerHTML = "";
+  zeigeSuchOrbits();
+  zeigeSuchArten();
+  $("dlgSuchen").showModal();
+}
+
+function zeigeSuchOrbits() {
+  const box = $("suOrbits");
+  box.innerHTML = "";
+  const offen = suchOrbits();
+  if (!offen.length) { box.appendChild(el("div", "hinweis", t("suKeineArt"))); return; }
+  offen.forEach((k) => {
+    const b = el("button", "person" + (suchKreis && k.id === suchKreis.id ? " an" : ""));
+    b.type = "button";
+    const p = el("span", "kreisPunkt");
+    p.style.background = k.farbe;
+    b.appendChild(p);
+    b.appendChild(el("span", null, k.name));
+    b.addEventListener("click", () => {
+      suchKreis = k; suchArt = null;
+      $("suErgebnis").innerHTML = "";
+      zeigeSuchOrbits(); zeigeSuchArten();
+    });
+    box.appendChild(b);
+  });
+}
+
+function zeigeSuchArten() {
+  const box = $("suArten");
+  box.innerHTML = "";
+  if (!suchKreis) return;
+  const arten = suchArten(suchKreis);
+  if (!arten.length) { box.appendChild(el("div", "hinweis", t("suKeineArt"))); return; }
+  arten.forEach((a) => {
+    const b = el("button", "person" + (suchArt && a.name === suchArt.name ? " an" : ""));
+    b.type = "button";
+    b.appendChild(el("span", null, a.name));
+    b.appendChild(el("span", "klein2", dauerText(Number(a.dauer) || 60)));
+    b.addEventListener("click", () => {
+      suchArt = a;
+      $("suErgebnis").innerHTML = "";
+      zeigeSuchArten();
+      sucheFreieZeiten();
+    });
+    box.appendChild(b);
+  });
+}
+
+/* 90 Minuten sind "1,5 Std". Das liest sich besser als "90 Min". */
+function dauerText(min) {
+  if (min < 60) return t("tfMin", { n: min });
+  const std = min / 60;
+  return t("tfStd", { n: Number.isInteger(std)
+    ? String(std) : std.toFixed(1).replace(".", t("komma")) });
+}
+
+$("suZu").addEventListener("click", () => $("dlgSuchen").close());
+$("suStart").addEventListener("click", sucheFreieZeiten);
+$("suVon").addEventListener("change", () => { if (suchArt) sucheFreieZeiten(); });
+$("suBis").addEventListener("change", () => { if (suchArt) sucheFreieZeiten(); });
+
+function sucheFreieZeiten() {
+  const erg = $("suErgebnis");
+  erg.innerHTML = "";
+  $("suGut").textContent = "";
+  $("suFehler").textContent = "";
+  if (!suchKreis) { $("suFehler").textContent = t("suKeineArt"); return; }
+  if (!suchArt) { $("suFehler").textContent = t("suWaehleArt"); return; }
+
+  const von = $("suVon").value, bis = $("suBis").value;
+  if (!von || !bis || bis < von) { $("suFehler").textContent = t("tfZeitraum"); return; }
+  if (tageBis(bis, von) > 60) { $("suFehler").textContent = t("tfZuLang"); return; }
+
+  const k = suchKreis;
+  const eigene = slots.filter((x) => x.kreisId === k.id && x.uid === nutzer.uid);
+  const treffer = [];
+
+  for (let tag = von; tag <= bis; tag = plus(tag, 1)) {
+    if (istFeiertag(tag)) continue;
+    const belegteSlots = slots.filter((x) => x.kreisId === k.id && x.datum === tag);
+    const schonDa = eigene.some((x) => x.datum === tag);
+    fensterFuer(k, tag)
+      .filter((x) => x.art && x.art.name === suchArt.name)
+      .forEach((x) => {
+        const frei = freiePlaetze(x, belegteSlots);
+        if (frei <= 0) return;
+        treffer.push({ tag, fenster: x, frei, schonDa });
+      });
+  }
+
+  if (!treffer.length) { erg.appendChild(el("div", "hinweis", t("suKeine"))); return; }
+
+  erg.appendChild(el("div", "hinweis", t("suNochFrei", { n: treffer.length })));
+
+  treffer.slice(0, 60).forEach((tr) => {
+    const z = el("div", "luecke");
+    const links = el("div");
+    links.appendChild(el("b", null,
+      ausMinuten(tr.fenster.von) + " – " + ausMinuten(tr.fenster.bis)));
+    links.appendChild(el("div", "dauer", kurzDatum(tr.tag)));
+    z.appendChild(links);
+    if (tr.fenster.plaetze > 1) {
+      z.appendChild(el("span", "marke",
+        t("slPlaetze", { frei: tr.frei, alle: tr.fenster.plaetze })));
+    }
+    const nimm = el("button", "knopf", t("suNehmen"));
+    nimm.type = "button";
+    nimm.style.cssText = "width:auto;padding:8px 14px;font-size:13px";
+    nimm.addEventListener("click", async () => {
+      nimm.disabled = true;
+      const gut = await buchen(k, tr.tag, tr.fenster);
+      if (gut) {
+        $("suGut").textContent = t("suGebucht", {
+          datum: kurzDatum(tr.tag), zeit: ausMinuten(tr.fenster.von) });
+        sucheFreieZeiten();
+      } else nimm.disabled = false;
+    });
+    z.appendChild(nimm);
+    erg.appendChild(z);
+  });
+}
+
+/* ===================================================================
    MENÜ HINTER DEM PROFILBILD
    Ansichten, Übersicht und Einstellungen an einer Stelle. Die Reiter
    oben bleiben trotzdem, für den schnellen Wechsel.
@@ -3275,6 +3591,8 @@ $("michBtn").addEventListener("click", () => {
   $("michName").textContent = meinName();
   $("michMail").textContent = nutzer.email || "";
   $("betriebBtn").classList.toggle("versteckt", !istBetreiber());
+  // Suchen erscheint nur, wenn es überhaupt etwas zu suchen gibt
+  $("mSuchen").classList.toggle("versteckt", !suchOrbits().length);
   baueMenueAnsichten();
   $("dlgMenue").showModal();
   zeigeFassung();
@@ -3290,6 +3608,10 @@ $("michZu").addEventListener("click", () => $("dlgMenue").close());
 $("mUebersicht").addEventListener("click", () => {
   $("dlgMenue").close();
   oeffneUebersicht();
+});
+$("mSuchen").addEventListener("click", () => {
+  $("dlgMenue").close();
+  oeffneSuchen(kreisVon(planKreis));
 });
 $("uebersichtZu").addEventListener("click", () => $("dlgUebersicht").close());
 $("uebersichtZurueck").addEventListener("click", () => zeigeMeineZahlen());
