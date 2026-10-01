@@ -666,6 +666,14 @@ textarea { resize: vertical; min-height: 62px; }
    ohne Arbeitszeit weiss eine Terminart nicht, wovon sie den Rest nimmt. */
 .schrittNr { font-size: 11px; font-weight: 800; letter-spacing: .09em;
              text-transform: uppercase; color: var(--k0); margin: 8px 0 2px; }
+/* Eine Meldung gehört neben den Knopf, der sie ausgelöst hat.
+   Ganz unten im Dialog sieht sie am Telefon niemand. */
+.blockMeldung { font-size: 13px; font-weight: 600; margin-top: 8px; color: var(--rot); }
+.blockMeldung.gut { color: var(--gruen); }
+.blockMeldung:empty { display: none; }
+.artWarn { display: inline-block; margin-top: 3px; font-size: 11.5px; font-weight: 700;
+           color: var(--orange); background: var(--orangeHell);
+           border-radius: 99px; padding: 2px 8px; }
 
 .zeile2 {
   display: flex; align-items: center; gap: 9px; padding: 8px 0;
@@ -986,6 +994,7 @@ td.n { color: var(--text2); white-space: nowrap; }
              <input type="time" id="eZeitBis" value="22:00"></div>
       </div>
       <button type="button" class="klein" id="zeitHinzu" style="margin-top:8px" data-i18n="kZeitHinzu"></button>
+      <div class="blockMeldung" id="zeitMeldung"></div>
       <p class="hinweis" data-i18n="kZeitenHinweis"></p>
     </div>
 
@@ -1001,6 +1010,7 @@ td.n { color: var(--text2); white-space: nowrap; }
              <input type="time" id="ePauseBis" value="19:30"></div>
       </div>
       <button type="button" class="klein" id="pauseHinzu" style="margin-top:8px" data-i18n="kPauseHinzu"></button>
+      <div class="blockMeldung" id="pauseMeldung"></div>
       <p class="hinweis" data-i18n="kPausenHinweis"></p>
     </div>
 
@@ -1043,6 +1053,7 @@ td.n { color: var(--text2); white-space: nowrap; }
       <p class="hinweis" data-i18n="kArtPlaetzeHinweis"></p>
 
       <button type="button" class="klein" id="artHinzu" style="margin-top:8px" data-i18n="kArtHinzu"></button>
+      <div class="blockMeldung" id="artMeldung"></div>
       <p class="hinweis" data-i18n="kArtenHinweis"></p>
     </div>
 
