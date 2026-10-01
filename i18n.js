@@ -180,6 +180,43 @@ de: {
   lgFeiertag: "Feiertag",
   lgFerien: "Schulferien",
 
+
+  // ---- Die drei Schritte beim Einrichten ----
+  kSchritt1: "Schritt 1 · Arbeitszeiten",
+  kSchritt2: "Schritt 2 · Pausen",
+  kSchritt3: "Schritt 3 · Terminarten",
+
+  // ---- Terminart: feste Zeiten oder der Rest ----
+  kModus: "Zeiten dieser Art",
+  kModusFest: "Feste Zeiten",
+  kModusRest: "Der Rest",
+  kModusHinweis: "Feste Zeiten: diese Art bekommt genau die Tage und Stunden, die du " +
+                 "einträgst. Der Rest: sie bekommt alles, was von deiner Arbeitszeit " +
+                 "übrig ist, nachdem die Arten darüber sich bedient haben. Die " +
+                 "Reihenfolge entscheidet, Pausen sind immer abgezogen.",
+  kRahmenFehlt: "Trag zuerst deine Arbeitszeiten ein, sonst bleibt für „Der Rest“ nichts übrig.",
+  kRest: "Rest",
+  kArtHoch: "Nach oben",
+
+  // ---- Freie Zeiten suchen ----
+  suTitel: "Freie Zeiten suchen",
+  suUnter: "Wähle die Art, dann zeigt dir Orbyx, wann noch etwas frei ist.",
+  suOrbit: "Wo",
+  suArt: "Welche Art",
+  suWaehleArt: "Wähle eine Terminart.",
+  suSuchen: "Suchen",
+  suKeine: "In diesem Zeitraum ist nichts frei. Versuch einen späteren Zeitraum.",
+  suNehmen: "Nehmen",
+  suGebucht: "Eingetragen.",
+  suNochFrei: "{n} frei",
+  suKeineArt: "In diesem Orbit sind noch keine Terminarten mit festen Zeiten angelegt.",
+  suSuchenKurz: "Suchen",
+
+  // ---- Absagen gibt die Zeit frei ----
+  nAbgesagtFrei: "hat abgesagt, die Zeit ist wieder frei",
+  nFreigeworden: "„{titel}“ am {datum} {zeit} wurde abgesagt. Die Zeit ist wieder frei.",
+  abAbgesagt: "Abgesagt, die Zeit ist wieder frei.",
+
   // Marke
   spruch: "Ordnung für alles, was gleichzeitig läuft.",
   anmelden: "Mit Google anmelden",
@@ -354,6 +391,7 @@ de: {
   tfFrueh: "Frühestens", tfSpaet: "Spätestens",
   tfDauer: "Mindestdauer",
   tfMin: "{n} Min", tfStd: "{n} Std",
+  komma: ",",
   tfSuchen: "Freie Zeiten suchen",
   tfEintragen: "Eintragen",
   tfNiemand: "Noch niemand in deinen Orbits. Leg einen an und lade jemanden ein.",
@@ -427,8 +465,8 @@ ar: {
   monate: ["يناير","فبراير","مارس","أبريل","مايو","يونيو",
            "يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"],
 
-  datLang: "{wt}، {tag} {monat}",
-  datKurz: "{wt}، {tag}/{monat}",
+  datLang: "{wt}، ⁦{tag} {monat}⁩",
+  datKurz: "{wt}، ⁦{tag}/{monat}⁩",
 
 
   planNiemand: "لا أحد مسجَّل اليوم.",
@@ -552,6 +590,38 @@ ar: {
   dsLegende: "عطلة رسمية ومدرسية",
   lgFeiertag: "عطلة رسمية",
   lgFerien: "عطلة مدرسية",
+
+
+  kSchritt1: "الخطوة ١ · أوقات العمل",
+  kSchritt2: "الخطوة ٢ · الاستراحات",
+  kSchritt3: "الخطوة ٣ · أنواع المواعيد",
+
+  kModus: "أوقات هذا النوع",
+  kModusFest: "أوقات ثابتة",
+  kModusRest: "الباقي",
+  kModusHinweis: "أوقات ثابتة: يأخذ هذا النوع الأيام والساعات التي تدخلها بالضبط. " +
+                 "الباقي: يأخذ كل ما تبقّى من وقت عملك بعد أن تأخذ الأنواع التي " +
+                 "فوقه نصيبها. الترتيب هو الفيصل، والاستراحات مخصومة دائماً.",
+  kRahmenFehlt: "أدخل أوقات عملك أولاً، وإلا لن يبقى شيء لـ«الباقي».",
+  kRest: "الباقي",
+  kArtHoch: "إلى الأعلى",
+
+  suTitel: "البحث عن أوقات متاحة",
+  suUnter: "اختر النوع، وسيعرض لك Orbyx ما تبقّى متاحاً.",
+  suOrbit: "أين",
+  suArt: "أي نوع",
+  suWaehleArt: "اختر نوع الموعد.",
+  suSuchen: "بحث",
+  suKeine: "لا يوجد شيء متاح في هذه الفترة. جرّب فترة لاحقة.",
+  suNehmen: "حجز",
+  suGebucht: "تم التسجيل.",
+  suNochFrei: "{n} متاح",
+  suKeineArt: "لا توجد في هذا المدار أنواع مواعيد بأوقات ثابتة بعد.",
+  suSuchenKurz: "بحث",
+
+  nAbgesagtFrei: "اعتذر، والوقت صار متاحاً من جديد",
+  nFreigeworden: "تم الاعتذار عن «{titel}» في {datum} {zeit}. الوقت متاح من جديد.",
+  abAbgesagt: "تم الاعتذار، والوقت متاح من جديد.",
 
   spruch: "تنظيم لكل ما يجري في وقت واحد.",
   anmelden: "تسجيل الدخول عبر Google",
@@ -710,6 +780,7 @@ ar: {
   tfFrueh: "لا قبل", tfSpaet: "لا بعد",
   tfDauer: "أقل مدة",
   tfMin: "{n} دقيقة", tfStd: "{n} ساعة",
+  komma: "٫",
   tfSuchen: "ابحث عن الأوقات المتاحة",
   tfEintragen: "تسجيل",
   tfNiemand: "لا أحد في مداراتك بعد. أنشئ مداراً وادعُ شخصاً.",
