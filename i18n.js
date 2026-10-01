@@ -53,13 +53,13 @@ de: {
   // ---- Kreis-Einstellungen ----
   kEinstellungen: "Einstellungen",
   kBelegung: "Wie die Zeit vergeben wird",
-  kParallel: "Gleichzeitig",
-  kExklusiv: "Nur einer",
-  kBelegungHinweis: "Gleichzeitig: mehrere können zur selben Zeit arbeiten, wie bei " +
-                    "Fahrern in einer Schicht. Nur einer: ein Zeitfenster gehört genau " +
-                    "einer Person, wie bei Fahrstunden.",
+  kParallel: "Gemeinsamer Plan",
+  kExklusiv: "Einzeltermin",
+  kBelegungHinweis: "Gemeinsamer Plan: alle arbeiten in derselben Zeit, wie Fahrer " +
+                    "in einer Schicht. Einzeltermin: ein Zeitfenster gehört genau " +
+                    "einer Person, wie eine Fahrstunde.",
   kArten: "Terminarten",
-  kArtenHinweis: "Was in diesem Kreis immer wieder vorkommt. Beim Anlegen eines " +
+  kArtenHinweis: "Was in diesem Orbit immer wieder vorkommt. Beim Anlegen eines " +
                  "Termins genügt dann ein Tipp. Etwas anderes eintragen geht trotzdem.",
   kArtName: "Bezeichnung",
   kArtNameBsp: "Fahrstunde, Theorie, Schicht",
@@ -67,8 +67,8 @@ de: {
   kArtHinzu: "Hinzufügen",
   kArtKeine: "Noch keine Terminart angelegt.",
   kZeiten: "Arbeitszeiten",
-  kZeitenHinweis: "Wann in diesem Kreis überhaupt gearbeitet wird. Der Plan zeigt nur " +
-                  "diesen Ausschnitt, und bei „Nur einer“ entstehen daraus die Zeitfenster.",
+  kZeitenHinweis: "Wann in diesem Orbit überhaupt gearbeitet wird. Der Plan zeigt nur " +
+                  "diesen Ausschnitt, und bei „Einzeltermin“ entstehen daraus die Zeitfenster.",
   kZeitHinzu: "Zeit hinzufügen",
   kZeitKeine: "Keine Arbeitszeiten festgelegt, der Plan zeigt den ganzen Tag.",
   kSpeichern: "Einstellungen speichern",
@@ -86,7 +86,7 @@ de: {
 
   // ---- Name ----
   nmTitel: "Wie heißt du?",
-  nmUnter: "Der Name steht in deinen Kreisen. Deine E-Mail-Adresse sehen die " +
+  nmUnter: "Der Name steht in deinen Orbits. Deine E-Mail-Adresse sehen die " +
            "anderen Mitglieder nicht.",
   nmFeld: "Name",
   nmBsp: "Vorname Nachname",
@@ -96,13 +96,13 @@ de: {
 
 
   // ---- Beitritt ----
-  nBeigetreten: "ist jetzt im Kreis {kreis}",
-  nWillkommen: "Du bist jetzt im Kreis {kreis}",
+  nBeigetreten: "ist jetzt im Orbit {kreis}",
+  nWillkommen: "Du bist jetzt im Orbit {kreis}",
   eiFertig: "Einladungstext kopieren",
   eiKopiert: "Kopiert. Schick den Text an {mail}.",
   eiText: "Ich habe dich zu Orbyx eingeladen: {link}\n\n" +
-          "Melde dich dort mit {mail} an, dann bist du im Kreis „{kreis}“. " +
-          "Mehr musst du nicht tun.",
+          "Melde dich dort mit {mail} an. Die Einladung zu „{kreis}“ wartet dann " +
+          "in der Glocke auf dich.",
   eiNochNicht: "Lade erst jemanden ein.",
 
 
@@ -116,6 +116,33 @@ de: {
   akFassung: "Fassung {fassung}",
   akKeine: "noch nicht gespeichert",
 
+
+  // ---- Menü und Übersicht ----
+  mnTitel: "Menü",
+  mnAnsichten: "Ansichten",
+  mnUebersicht: "Übersicht",
+  mnEinstellungen: "Einstellungen",
+  uZurueck: "Zurück",
+  uNichts: "Hier ist gerade nichts.",
+  uTippZahl: "Tipp auf eine Zahl, dann siehst du, was dahintersteckt.",
+
+  // ---- Fristen ----
+  frTitel: "Fristen",
+  frKeine: "Nichts mit Frist. Aufgaben ohne Frist stehen unter Aufgaben.",
+  frAlleMit: "Alles mit Frist, das Dringendste zuerst.",
+
+  // ---- Einladung annehmen ----
+  eiFrage: "{name} lädt dich in „{kreis}“ ein",
+  eiAnnehmen: "Annehmen",
+  eiAblehnen: "Ablehnen",
+  eiOffen: "Einladung",
+  nAngenommen: "hat die Einladung zu {kreis} angenommen",
+  nAbgelehnt: "hat die Einladung zu {kreis} abgelehnt",
+  eiAblehnenFrage: "Die Einladung zu „{kreis}“ ablehnen?",
+
+  // ---- Serie als Schalter ----
+  fWiederholt: "Wiederholt sich",
+
   // Marke
   spruch: "Ordnung für alles, was gleichzeitig läuft.",
   anmelden: "Mit Google anmelden",
@@ -125,14 +152,14 @@ de: {
   // Kopfzeile
   suchen: "Suchen",
   terminFinden: "Termin finden",
-  kreise: "Kreise",
+  kreise: "Orbits",
   nachrichten: "Nachrichten",
   konto: "Konto",
   neuerEintrag: "Neuer Eintrag",
 
   // Ansichten
   vTag: "Tag", vWoche: "Woche", vMonat: "Monat",
-  vAufgaben: "Aufgaben", vListe: "Liste",
+  vAufgaben: "Aufgaben", vListe: "Fristen",
   fAlles: "Alles", fTermine: "Nur Termine", fAufgaben: "Nur Aufgaben",
 
   // Zeitleiste
@@ -209,8 +236,8 @@ de: {
   fFrist: "Frist (optional)",
   fOrt: "Ort (optional)", fOrtBsp: "Büro, Online, Zuhause",
   fNotiz: "Notiz", fOptional: "Optional",
-  fTeilen: "Mit welchen Kreisen teilen",
-  fTeilenHinweis: "Ohne Auswahl sieht nur du den Eintrag. Deine Kreise sehen " +
+  fTeilen: "Mit welchen Orbits teilen",
+  fTeilenHinweis: "Ohne Auswahl sieht nur du den Eintrag. Deine Orbits sehen " +
                   "immer, dass die Zeit belegt ist, aber nur bei geteilten " +
                   "Einträgen auch womit.",
   fZuweisen: "Wem zuweisen",
@@ -234,19 +261,19 @@ de: {
                   "„Diesen Tag absagen“ wählen.",
 
   // Kreise
-  kTitel: "Kreise",
-  kUnter: "Ein Kreis ist eine Gruppe, die zusammen plant. Familie, Arbeit, " +
-          "Kunden. Jeder kann in mehreren Kreisen sein.",
-  kKeine: "Du bist noch in keinem Kreis. Leg unten einen an und lade Leute ein.",
-  kNeuer: "Neuen Kreis anlegen",
+  kTitel: "Orbits",
+  kUnter: "Ein Orbit ist eine Gruppe, die zusammen plant. Familie, Arbeit, " +
+          "Kunden. Jeder kann in mehreren Orbits sein.",
+  kKeine: "Du bist noch in keinem Orbit. Leg einen an und lade Leute ein.",
+  kNeuer: "Neuer Orbit",
   kName: "Name", kNameBsp: "Familie, Team, Kunden …",
   kFarbe: "Farbe",
   kArt: "Art",
-  kArtKreis: "Kreis",
-  kArtStern: "Stern",
-  kArtHinweis: "Im Kreis sehen alle die belegten Zeiten aller. Beim Stern " +
-               "sehen die Mitglieder nur dich, und nicht einander. Für " +
-               "Kunden, Schüler oder Fahrer nimm den Stern.",
+  kArtKreis: "Offene Gruppe",
+  kArtStern: "Geschlossene Gruppe",
+  kArtHinweis: "In der offenen Gruppe sehen alle die belegten Zeiten aller. " +
+               "In der geschlossenen sehen die Mitglieder nur dich, und nicht " +
+               "einander. Für Kunden, Schüler oder Fahrer nimm die geschlossene.",
   kAnlegen: "Anlegen",
   kEinladen: "Einladen",
   kVerwalter: "Verwalter",
@@ -258,28 +285,28 @@ de: {
   kZurueckFrage: "Einladung an {mail} zurückziehen?",
   kEntfernen: "Entfernen",
   kEntfernenFrage: "{name} aus „{kreis}“ entfernen?",
-  kVerlassen: "Kreis verlassen",
-  kVerlassenFrage: "Den Kreis „{kreis}“ verlassen?",
-  kLoeschen: "Kreis löschen",
-  kLoeschenFrage: "Den Kreis „{kreis}“ wirklich löschen?\n\nDie Termine bleiben " +
+  kVerlassen: "Orbit verlassen",
+  kVerlassenFrage: "Den Orbit „{kreis}“ verlassen?",
+  kLoeschen: "Orbit löschen",
+  kLoeschenFrage: "Den Orbit „{kreis}“ wirklich löschen?\n\nDie Termine bleiben " +
                   "erhalten, aber niemand sieht mehr die des anderen. Das " +
                   "lässt sich nicht rückgängig machen.",
   kNachricht: "Nachricht",
-  kDarfNicht: "Du darfst keine Kreise anlegen. Der Betreiber kann das freischalten.",
+  kDarfNicht: "Du darfst keine Orbits anlegen. Der Betreiber kann das freischalten.",
   kUnbekannt: "Unbekannt",
-  kNameFehlt: "Gib dem Kreis einen Namen.",
+  kNameFehlt: "Gib dem Orbit einen Namen.",
 
   // Einladen
   eiTitel: "Einladen",
-  eiIn: "In den Kreis {kreis}",
+  eiIn: "In den Orbit {kreis}",
   eiMail: "E-Mail-Adresse",
-  eiAlsVerwalter: "Darf selbst Leute in diesen Kreis einladen",
-  eiHinweis: "Die Person muss sich mit genau dieser Adresse anmelden. Sobald sie " +
-             "die App offen hat, ist sie im Kreis, ohne etwas anzuklicken.",
+  eiAlsVerwalter: "Darf selbst Leute in diesen Orbit einladen",
+  eiHinweis: "Die Person muss sich mit genau dieser Adresse anmelden. Sie bekommt " +
+             "die Einladung in der Glocke und kann annehmen oder ablehnen.",
   eiSenden: "Einladen",
   eiKeineMail: "Das sieht nicht nach einer E-Mail aus.",
   eiSchonDrin: "Du bist schon drin.",
-  eiErfolg: "Eingeladen. {mail} ist im Kreis, sobald sie sich anmeldet.",
+  eiErfolg: "Eingeladen. {mail} entscheidet selbst, ob sie annimmt.",
 
   // Termin finden
   tfTitel: "Termin finden",
@@ -291,7 +318,7 @@ de: {
   tfMin: "{n} Min", tfStd: "{n} Std",
   tfSuchen: "Freie Zeiten suchen",
   tfEintragen: "Eintragen",
-  tfNiemand: "Noch niemand in deinen Kreisen. Lege einen Kreis an und lade jemanden ein.",
+  tfNiemand: "Noch niemand in deinen Orbits. Leg einen an und lade jemanden ein.",
   tfKeine: "Kein gemeinsames Fenster in diesem Zeitraum. Versuch einen längeren " +
            "Zeitraum oder eine kürzere Dauer.",
   tfAlleFrei: "Alle frei: {namen}",
@@ -330,27 +357,27 @@ de: {
   koOffen: "offene Aufgaben",
   koUeberfaellig: "überfällig",
   koSerien: "Serien",
-  koKreise: "Kreise",
+  koKreise: "Orbits",
   koGeteilt: "geteilt",
   koAbmelden: "Abmelden",
 
   // Betreiber
   bTitel: "Betrieb",
-  bUnter: "Konten und Kreise. Termine und Inhalte stehen hier bewusst nicht.",
+  bUnter: "Konten und Orbits. Termine und Inhalte stehen hier bewusst nicht.",
   bPersonen: "Personen",
   bAktiv7: "aktiv, 7 Tage",
-  bKreise: "Kreise",
+  bKreise: "Orbits",
   bGesperrt: "gesperrt",
   bKonten: "Konten",
   bName: "Name", bMail: "E-Mail", bZuletzt: "Zuletzt da", bStatus: "Status",
   bAktiv: "aktiv",
   bSperren: "Sperren", bFreigeben: "Freigeben",
-  bDarfKreise: "Kreise anlegen",
+  bDarfKreise: "Orbits anlegen",
   bJa: "ja", bNein: "nein",
   bHinweis: "Sperren wirkt beim nächsten Laden der App. Wer sofort raus soll, " +
             "wird zusätzlich in der Firebase Console unter Authentication " +
             "deaktiviert.",
-  bAlleKreise: "Alle Kreise, die du siehst",
+  bAlleKreise: "Alle Orbits, die du siehst",
   bOffen: "{n} offen",
   bFehler: "Konnte nicht laden: {code}"
 },
@@ -379,12 +406,12 @@ ar: {
 
   kEinstellungen: "الإعدادات",
   kBelegung: "كيف يُوزَّع الوقت",
-  kParallel: "في الوقت نفسه",
-  kExklusiv: "شخص واحد فقط",
-  kBelegungHinweis: "في الوقت نفسه: يمكن لعدة أشخاص العمل في الوقت ذاته، مثل السائقين " +
-                    "في وردية. شخص واحد فقط: الفترة الزمنية تخص شخصاً واحداً، مثل دروس القيادة.",
+  kParallel: "خطة مشتركة",
+  kExklusiv: "موعد فردي",
+  kBelegungHinweis: "خطة مشتركة: الجميع يعملون في الوقت ذاته، مثل السائقين في وردية. " +
+                    "موعد فردي: الفترة الزمنية تخص شخصاً واحداً، مثل درس قيادة.",
   kArten: "أنواع المواعيد",
-  kArtenHinweis: "ما يتكرر في هذه الدائرة. عندها يكفي ضغطة واحدة عند إنشاء موعد، " +
+  kArtenHinweis: "ما يتكرر في هذا المدار. عندها يكفي ضغطة واحدة عند إنشاء موعد، " +
                  "ويبقى بإمكانك كتابة شيء آخر.",
   kArtName: "التسمية",
   kArtNameBsp: "درس قيادة، نظري، وردية",
@@ -392,8 +419,8 @@ ar: {
   kArtHinzu: "إضافة",
   kArtKeine: "لا يوجد نوع مواعيد بعد.",
   kZeiten: "أوقات العمل",
-  kZeitenHinweis: "متى يُعمل في هذه الدائرة أصلاً. الخطة تعرض هذا النطاق فقط، " +
-                  "وفي وضع «شخص واحد فقط» تنشأ منه الفترات الزمنية.",
+  kZeitenHinweis: "متى يُعمل في هذا المدار أصلاً. الخطة تعرض هذا النطاق فقط، " +
+                  "وفي وضع «موعد فردي» تنشأ منه الفترات الزمنية.",
   kZeitHinzu: "إضافة وقت",
   kZeitKeine: "لم تُحدَّد أوقات عمل، والخطة تعرض اليوم كاملاً.",
   kSpeichern: "حفظ الإعدادات",
@@ -409,7 +436,7 @@ ar: {
   slDein: "لك",
 
   nmTitel: "ما اسمك؟",
-  nmUnter: "الاسم يظهر في دوائرك. أما بريدك الإلكتروني فلا يراه بقية الأعضاء.",
+  nmUnter: "الاسم يظهر في مداراتك. أما بريدك الإلكتروني فلا يراه بقية الأعضاء.",
   nmFeld: "الاسم",
   nmBsp: "الاسم الأول واسم العائلة",
   nmWeiter: "متابعة",
@@ -417,13 +444,12 @@ ar: {
   nmAendern: "تغيير الاسم",
 
 
-  nBeigetreten: "أصبح الآن في دائرة {kreis}",
-  nWillkommen: "أنت الآن في دائرة {kreis}",
+  nBeigetreten: "أصبح الآن في مدار {kreis}",
+  nWillkommen: "أنت الآن في مدار {kreis}",
   eiFertig: "نسخ نص الدعوة",
   eiKopiert: "تم النسخ. أرسل النص إلى {mail}.",
   eiText: "دعوتك إلى Orbyx: {link}\n\n" +
-          "سجّل الدخول هناك ببريد {mail}، وعندها تصبح في دائرة «{kreis}». " +
-          "لا شيء آخر عليك فعله.",
+          "سجّل الدخول هناك ببريد {mail}. وستجد دعوة «{kreis}» بانتظارك في الجرس.",
   eiNochNicht: "ادعُ شخصاً أولاً.",
 
 
@@ -435,6 +461,29 @@ ar: {
   akFassung: "الإصدار {fassung}",
   akKeine: "غير محفوظ بعد",
 
+
+  mnTitel: "القائمة",
+  mnAnsichten: "العروض",
+  mnUebersicht: "نظرة عامة",
+  mnEinstellungen: "الإعدادات",
+  uZurueck: "رجوع",
+  uNichts: "لا يوجد شيء هنا الآن.",
+  uTippZahl: "اضغط على رقم لترى ما خلفه.",
+
+  frTitel: "المواعيد النهائية",
+  frKeine: "لا شيء له موعد نهائي. المهام بلا موعد تجدها تحت المهام.",
+  frAlleMit: "كل ما له موعد نهائي، الأكثر إلحاحاً أولاً.",
+
+  eiFrage: "يدعوك {name} إلى «{kreis}»",
+  eiAnnehmen: "قبول",
+  eiAblehnen: "رفض",
+  eiOffen: "دعوة",
+  nAngenommen: "قبل الدعوة إلى {kreis}",
+  nAbgelehnt: "رفض الدعوة إلى {kreis}",
+  eiAblehnenFrage: "رفض الدعوة إلى «{kreis}»؟",
+
+  fWiederholt: "يتكرر",
+
   spruch: "تنظيم لكل ما يجري في وقت واحد.",
   anmelden: "تسجيل الدخول عبر Google",
   anmeldenFehl: "فشل تسجيل الدخول: {code}",
@@ -442,13 +491,13 @@ ar: {
 
   suchen: "بحث",
   terminFinden: "إيجاد موعد",
-  kreise: "الدوائر",
+  kreise: "مدارات",
   nachrichten: "الرسائل",
   konto: "الحساب",
   neuerEintrag: "إدخال جديد",
 
   vTag: "اليوم", vWoche: "الأسبوع", vMonat: "الشهر",
-  vAufgaben: "المهام", vListe: "القائمة",
+  vAufgaben: "المهام", vListe: "المواعيد النهائية",
   fAlles: "الكل", fTermine: "المواعيد فقط", fAufgaben: "المهام فقط",
 
   heute: "اليوم", vergangen: "مضى",
@@ -519,8 +568,8 @@ ar: {
   fFrist: "الموعد النهائي (اختياري)",
   fOrt: "المكان (اختياري)", fOrtBsp: "المكتب، عبر الإنترنت، المنزل",
   fNotiz: "ملاحظة", fOptional: "اختياري",
-  fTeilen: "المشاركة مع أي دوائر",
-  fTeilenHinweis: "بدون اختيار لن يرى الإدخال سواك. دوائرك ترى دائماً أن الوقت " +
+  fTeilen: "المشاركة مع أي مدارات",
+  fTeilenHinweis: "بدون اختيار لن يرى الإدخال سواك. مداراتك ترى دائماً أن الوقت " +
                   "مشغول، لكنها ترى التفاصيل فقط في الإدخالات المشتركة.",
   fZuweisen: "إسناد إلى",
   fZuweisenHinweis: "من تختارهم يصلهم طلب ويمكنهم الموافقة أو الاعتذار. " +
@@ -540,19 +589,19 @@ ar: {
   eSerieLoeschen: "حذف كل تكرارات «{titel}»؟\n\nإذا أردت إلغاء هذا اليوم فقط: " +
                   "ألغِ، ثم اضغط على الإدخال واختر «إلغاء هذا اليوم».",
 
-  kTitel: "الدوائر",
-  kUnter: "الدائرة مجموعة تخطط معاً. العائلة، العمل، الزبائن. " +
-          "يمكن لأي شخص أن يكون في عدة دوائر.",
-  kKeine: "لست في أي دائرة بعد. أنشئ واحدة بالأسفل وادعُ أشخاصاً.",
-  kNeuer: "إنشاء دائرة جديدة",
+  kTitel: "مدارات",
+  kUnter: "المدار مجموعة تخطط معاً. العائلة، العمل، الزبائن. " +
+          "يمكن لأي شخص أن يكون في عدة مدارات.",
+  kKeine: "لست في أي مدار بعد. أنشئ واحداً وادعُ أشخاصاً.",
+  kNeuer: "مدار جديد",
   kName: "الاسم", kNameBsp: "العائلة، الفريق، الزبائن …",
   kFarbe: "اللون",
   kArt: "النوع",
-  kArtKreis: "دائرة",
-  kArtStern: "نجمة",
-  kArtHinweis: "في الدائرة يرى الجميع أوقات الجميع المشغولة. في النجمة يرى " +
-               "الأعضاء أوقاتك أنت فقط، ولا يرون بعضهم. للزبائن أو الطلاب " +
-               "أو السائقين اختر النجمة.",
+  kArtKreis: "مجموعة مفتوحة",
+  kArtStern: "مجموعة مغلقة",
+  kArtHinweis: "في المجموعة المفتوحة يرى الجميع أوقات الجميع المشغولة. وفي المغلقة " +
+               "يرى الأعضاء أوقاتك أنت فقط، ولا يرون بعضهم. للزبائن أو الطلاب " +
+               "أو السائقين اختر المغلقة.",
   kAnlegen: "إنشاء",
   kEinladen: "دعوة",
   kVerwalter: "مشرف",
@@ -564,26 +613,26 @@ ar: {
   kZurueckFrage: "سحب الدعوة المرسلة إلى {mail}؟",
   kEntfernen: "إزالة",
   kEntfernenFrage: "إزالة {name} من «{kreis}»؟",
-  kVerlassen: "مغادرة الدائرة",
-  kVerlassenFrage: "مغادرة الدائرة «{kreis}»؟",
-  kLoeschen: "حذف الدائرة",
-  kLoeschenFrage: "حذف الدائرة «{kreis}» فعلاً؟\n\nالمواعيد تبقى، لكن لن يرى " +
+  kVerlassen: "مغادرة المدار",
+  kVerlassenFrage: "مغادرة المدار «{kreis}»؟",
+  kLoeschen: "حذف المدار",
+  kLoeschenFrage: "حذف المدار «{kreis}» فعلاً؟\n\nالمواعيد تبقى، لكن لن يرى " +
                   "أحد مواعيد الآخر بعد الآن. لا يمكن التراجع عن هذا.",
   kNachricht: "رسالة",
-  kDarfNicht: "لا تملك صلاحية إنشاء الدوائر. يمكن للمشغّل تفعيلها لك.",
+  kDarfNicht: "لا تملك صلاحية إنشاء المدارات. يمكن للمشغّل تفعيلها لك.",
   kUnbekannt: "غير معروف",
-  kNameFehlt: "أعطِ الدائرة اسماً.",
+  kNameFehlt: "أعطِ المدار اسماً.",
 
   eiTitel: "دعوة",
-  eiIn: "إلى الدائرة {kreis}",
+  eiIn: "إلى المدار {kreis}",
   eiMail: "البريد الإلكتروني",
-  eiAlsVerwalter: "يمكنه دعوة أشخاص إلى هذه الدائرة",
-  eiHinweis: "يجب أن يسجّل الشخص الدخول بهذا البريد بالذات. وما إن يفتح التطبيق " +
-             "حتى يصبح داخل الدائرة، دون أن يضغط شيئاً.",
+  eiAlsVerwalter: "يمكنه دعوة أشخاص إلى هذا المدار",
+  eiHinweis: "يجب أن يسجّل الشخص الدخول بهذا البريد بالذات. وتصله الدعوة في " +
+             "الجرس فيقبلها أو يرفضها.",
   eiSenden: "إرسال الدعوة",
   eiKeineMail: "هذا لا يبدو بريداً إلكترونياً.",
   eiSchonDrin: "أنت موجود بالفعل.",
-  eiErfolg: "تمت الدعوة. سينضم {mail} فور تسجيل الدخول.",
+  eiErfolg: "تمت الدعوة. يقرر {mail} بنفسه القبول أو الرفض.",
 
   tfTitel: "إيجاد موعد",
   tfUnter: "يعرض الفترات التي يكون فيها كل المختارين متفرغين.",
@@ -594,7 +643,7 @@ ar: {
   tfMin: "{n} دقيقة", tfStd: "{n} ساعة",
   tfSuchen: "ابحث عن الأوقات المتاحة",
   tfEintragen: "تسجيل",
-  tfNiemand: "لا أحد في دوائرك بعد. أنشئ دائرة وادعُ شخصاً.",
+  tfNiemand: "لا أحد في مداراتك بعد. أنشئ مداراً وادعُ شخصاً.",
   tfKeine: "لا توجد فترة مشتركة في هذا المدى. جرّب مدى أطول أو مدة أقصر.",
   tfAlleFrei: "الجميع متفرغ: {namen}",
   tfZeitraum: "تحقق من المدى الزمني.",
@@ -629,25 +678,25 @@ ar: {
   koOffen: "مهام مفتوحة",
   koUeberfaellig: "متأخرة",
   koSerien: "تكرارات",
-  koKreise: "دوائر",
+  koKreise: "مدارات",
   koGeteilt: "مشترك",
   koAbmelden: "تسجيل الخروج",
 
   bTitel: "التشغيل",
-  bUnter: "الحسابات والدوائر. المواعيد والمحتويات غير معروضة هنا عن قصد.",
+  bUnter: "الحسابات والمدارات. المواعيد والمحتويات غير معروضة هنا عن قصد.",
   bPersonen: "أشخاص",
   bAktiv7: "نشط، 7 أيام",
-  bKreise: "دوائر",
+  bKreise: "مدارات",
   bGesperrt: "محظور",
   bKonten: "الحسابات",
   bName: "الاسم", bMail: "البريد", bZuletzt: "آخر ظهور", bStatus: "الحالة",
   bAktiv: "نشط",
   bSperren: "حظر", bFreigeben: "رفع الحظر",
-  bDarfKreise: "إنشاء الدوائر",
+  bDarfKreise: "إنشاء المدارات",
   bJa: "نعم", bNein: "لا",
   bHinweis: "الحظر يسري عند التحميل التالي للتطبيق. لإخراج شخص فوراً، عطّل " +
             "حسابه أيضاً في Firebase Console ضمن Authentication.",
-  bAlleKreise: "كل الدوائر التي تراها",
+  bAlleKreise: "كل المدارات التي تراها",
   bOffen: "{n} بانتظار الرد",
   bFehler: "تعذّر التحميل: {code}"
 }
