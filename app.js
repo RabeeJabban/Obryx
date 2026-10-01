@@ -348,6 +348,7 @@ let filter  = "alles";
 let anker   = heute();
 let gewaehlt = heute();
 let planKreis = "";            // welcher Kreis im Tagesplan gezeigt wird
+let frischeKreise = new Set();  // gerade angelegt, Server kennt sie noch nicht
 
 let meineEintraege = [];
 let meineKreise    = [];
@@ -666,6 +667,7 @@ onAuthStateChanged(auth, async (user) => {
   stopBelegt = stopSlots = stopEinladungen = null;
   eigene = []; geteilte = []; meineEintraege = []; nachrichten = [];
   belegtFremd = []; slots = []; meineEinladungen = []; nachgeruestet = false;
+  frischeKreise = new Set();
 
   if (!user) {
     nutzer = null; profil = {};
@@ -888,6 +890,13 @@ function starteKreise() {
   stopKreise = onSnapshot(
     query(collection(db, "kreise"), where("mitglieder", "array-contains", nutzer.uid)),
     async (snap) => {
+      /* Ein gerade angelegter Orbit steht sofort hier, auf dem Server
+         aber erst eine Umdrehung später. Nachfragen zu so einem Orbit
+         beantwortet die Datenbank mit permission-denied, weil sie ihn
+         noch nicht kennt. Also merken wir uns, was noch unterwegs ist,
+         und fragen beim nächsten Schnappschuss nach. */
+      frischeKreise = new Set(snap.docs.filter((x) => x.metadata?.hasPendingWrites)
+                                       .map((x) => x.id));
       meineKreise = snap.docs.map((x) => ({ id: x.id, ...x.data() }))
                              .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
       alleNutzer = {};
@@ -911,7 +920,7 @@ function starteKreise() {
 async function ladeKreisinfo() {
   let neu = false;
   for (const k of meineKreise) {
-    if (!binVerwalter(k)) continue;
+    if (!binVerwalter(k) || frischeKreise.has(k.id)) continue;
     try {
       const snap = await getDocs(
         query(collection(db, "kreisinfo"), where("kreisId", "==", k.id)));
@@ -930,7 +939,7 @@ async function ladeKreisinfo() {
 async function ladeOffeneEinladungen() {
   offeneEinladungen = {};
   for (const k of meineKreise) {
-    if (!binVerwalter(k)) continue;
+    if (!binVerwalter(k) || frischeKreise.has(k.id)) continue;
     try {
       const snap = await getDocs(
         query(collection(db, "einladungen"), where("kreisId", "==", k.id)));
@@ -988,7 +997,8 @@ function starteBelegt() {
 
 function starteSlots() {
   if (stopSlots) { stopSlots(); stopSlots = null; }
-  const ids = meineKreise.filter(istExklusiv).map((k) => k.id).slice(0, 10);
+  const ids = meineKreise.filter((k) => istExklusiv(k) && !frischeKreise.has(k.id))
+                         .map((k) => k.id).slice(0, 10);
   if (!ids.length) { slots = []; return; }
   stopSlots = onSnapshot(
     query(collection(db, "slots"), where("kreisId", "in", ids)),
@@ -3012,7 +3022,7 @@ $("formOrbitNeu").addEventListener("submit", async (ev) => {
   const name = $("kName").value.trim();
   if (!name) { $("kreisFehler").textContent = t("kNameFehlt"); return; }
   try {
-    await addDoc(collection(db, "kreise"), {
+    const ref = await addDoc(collection(db, "kreise"), {
       name, farbe: neueFarbe, art: neueArt,
       arten: [], zeiten: [], pausen: [],
       erstellerId: nutzer.uid,
@@ -3020,6 +3030,12 @@ $("formOrbitNeu").addEventListener("submit", async (ev) => {
       info: { [nutzer.uid]: meinSteckbrief() },
       erstelltAm: serverTimestamp()
     });
+    // Erst jetzt, nach der Bestätigung: der Server kennt den Orbit,
+    // also darf auch der Eintrag mit Name und Mail hinein.
+    await setDoc(doc(db, "kreisinfo", ref.id + "_" + nutzer.uid), {
+      kreisId: ref.id, uid: nutzer.uid, name: meinName(),
+      email: (nutzer.email || "").toLowerCase()
+    }).catch(() => {});
     $("kName").value = "";
     $("dlgOrbitNeu").close();
   } catch (e) {
