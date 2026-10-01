@@ -15,7 +15,7 @@
  * weiter die alte Fassung, egal was auf dem Server liegt.
  */
 
-const VERSION = "orbyx-9";
+const VERSION = "orbyx-10";
 const DATEIEN = [
   "./",
   "./index.html",
