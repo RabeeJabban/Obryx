@@ -31,7 +31,8 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc,
-  getDoc, getDocs, query, where, onSnapshot, serverTimestamp, writeBatch
+  getDoc, getDocs, query, where, onSnapshot, serverTimestamp, writeBatch,
+  arrayUnion
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 import {
@@ -109,7 +110,8 @@ function wendeSpracheAn(code) {
     zeichne();
     if ($("dlgKreise").open) zeigeKreise();
     if ($("dlgPost").open)   zeigePost();
-    if ($("dlgMich").open)   zeigeMeineZahlen();
+    if ($("dlgMenue").open)      baueMenueAnsichten();
+    if ($("dlgUebersicht").open) zeigeMeineZahlen();
   }
 }
 
@@ -353,11 +355,12 @@ let alleNutzer     = {};       // uid -> {name, email, photoURL}
 let belegtFremd    = [];       // belegte Zeiten anderer, ohne Titel
 let slots          = [];       // vergebene Zeitfenster in exklusiven Kreisen
 let nachrichten    = [];
-let offeneEinladungen = {};
+let meineEinladungen = [];   // was mir angeboten wurde
+let offeneEinladungen = {};  // was ich anderen angeboten habe
 
 let eigene = [], geteilte = [];
 let stopEigene = null, stopGeteilte = null, stopKreise = null;
-let stopPost = null, stopBelegt = null, stopSlots = null;
+let stopPost = null, stopBelegt = null, stopSlots = null, stopEinladungen = null;
 
 let bearbeiteId = null, bearbeiteTag = null;
 let typ = "termin", wiederholung = "einmal";
@@ -458,11 +461,12 @@ $("loginBtn").addEventListener("click", async () => {
 $("logoutBtn").addEventListener("click", () => signOut(auth));
 
 onAuthStateChanged(auth, async (user) => {
-  [stopEigene, stopGeteilte, stopKreise, stopPost, stopBelegt, stopSlots]
+  [stopEigene, stopGeteilte, stopKreise, stopPost, stopBelegt, stopSlots, stopEinladungen]
     .forEach((f) => { if (f) f(); });
-  stopEigene = stopGeteilte = stopKreise = stopPost = stopBelegt = stopSlots = null;
+  stopEigene = stopGeteilte = stopKreise = stopPost = null;
+  stopBelegt = stopSlots = stopEinladungen = null;
   eigene = []; geteilte = []; meineEintraege = []; nachrichten = [];
-  belegtFremd = []; slots = []; nachgeruestet = false;
+  belegtFremd = []; slots = []; meineEinladungen = []; nachgeruestet = false;
 
   if (!user) {
     nutzer = null; profil = {};
@@ -496,13 +500,12 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 function starteAlles() {
-  einladungenAnnehmen().then(() => {
-    starteKreise();
-    starteEintraege();
-    starteBelegt();
-    startePost();
-    zeichne();
-  });
+  starteKreise();
+  starteEintraege();
+  starteBelegt();
+  startePost();
+  starteEinladungen();
+  zeichne();
 }
 
 function istBetreiber() { return BETREIBER.includes((nutzer?.email || "").toLowerCase()); }
@@ -578,7 +581,7 @@ $("formName").addEventListener("submit", async (ev) => {
     $("nameFehler").textContent = t("eSpeichern", { code: e.code || e.message });
   }
 });
-$("nameBtn").addEventListener("click", () => { $("dlgMich").close(); fragNachName(true); });
+$("nameBtn").addEventListener("click", () => { $("dlgMenue").close(); fragNachName(true); });
 
 /* Ändert jemand seinen Namen, muss er in den Kreisen mitgeändert werden */
 async function namenInKreisenNachziehen() {
@@ -597,94 +600,85 @@ async function namenInKreisenNachziehen() {
 
 /* ===================================================================
    EINLADUNGEN
+   Niemand landet ungefragt in einem Orbit. Die Einladung erscheint in
+   der Glocke, und erst ein Tipp auf "Annehmen" trägt die Person ein.
+   Der Einladende bekommt die Antwort, so oder so.
    =================================================================== */
 
-async function einladungenAnnehmen() {
+function starteEinladungen() {
   const mail = (nutzer.email || "").toLowerCase();
   if (!mail) return;
-
-  try {
-    const snap = await getDocs(
-      query(collection(db, "einladungen"), where("email", "==", mail)));
-
-    for (const d of snap.docs) {
-      const ein = d.data();
-      try {
-        const kref = doc(db, "kreise", ein.kreisId);
-        const k = await getDoc(kref);
-        if (!k.exists()) { await deleteDoc(d.ref); continue; }
-
-        const daten = k.data();
-        const mitglieder = daten.mitglieder || [];
-
-        if (!mitglieder.includes(nutzer.uid)) {
-          const neu = { mitglieder: [...mitglieder, nutzer.uid] };
-          const alsVerwalter = !!ein.alsVerwalter;
-          if (alsVerwalter) neu.verwalter = [...(daten.verwalter || []), nutzer.uid];
-
-          // Im Sternkreis steht der Name eines einfachen Mitglieds NICHT
-          // im Kreis-Dokument, sonst könnten sich die Mitglieder
-          // gegenseitig auslesen.
-          const sternMitglied = (daten.art || "kreis") === "stern" && !alsVerwalter;
-          if (!sternMitglied) {
-            const info = { ...(daten.info || {}) };
-            info[nutzer.uid] = meinSteckbrief();
-            neu.info = info;
-          }
-          await updateDoc(kref, neu);
-
-          // Der Verwalter braucht Name und E-Mail seiner Mitglieder.
-          // Die stehen getrennt und sind nur für ihn lesbar.
-          await setDoc(doc(db, "kreisinfo", ein.kreisId + "_" + nutzer.uid), {
-            kreisId: ein.kreisId, uid: nutzer.uid,
-            name: meinName(), email: mail
-          }).catch((e) => console.warn("kreisinfo:", e.code));
-
-          await meldeBeitritt(daten.name || "", ein.vonUid);
-        }
-        await deleteDoc(d.ref);
-      } catch (e) { console.error("Einladung", d.id, e); }
-    }
-  } catch (e) { console.error("Einladungen:", e); }
+  stopEinladungen = onSnapshot(
+    query(collection(db, "einladungen"), where("email", "==", mail)),
+    (snap) => {
+      meineEinladungen = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      zeigeZaehler();
+      if ($("dlgPost").open) zeigePost();
+    },
+    (e) => { console.warn("Einladungen:", e.code); meineEinladungen = []; }
+  );
 }
 
-/* Beim Beitritt sagen beide Seiten Bescheid: der Neue erfährt, dass er
-   drin ist, und der Verwalter, dass die Einladung angekommen ist. */
-async function meldeBeitritt(kreisName, anwerberUid) {
+async function einladungAnnehmen(ein) {
+  // WICHTIG: hier wird der Orbit NICHT erst gelesen.
+  // Wer noch nicht Mitglied ist, darf das Dokument gar nicht lesen,
+  // ein getDoc() würde also mit "permission-denied" abbrechen, bevor
+  // überhaupt jemand beitreten kann. Stattdessen arrayUnion: die
+  // Datenbank hängt den Namen selbst an die Liste an, ohne dass die
+  // App die Liste kennen muss.
+  const kref = doc(db, "kreise", ein.kreisId);
+  const alsVerwalter = !!ein.alsVerwalter;
+  const offeneGruppe = (ein.art || "kreis") !== "stern";
+
+  const neu = { mitglieder: arrayUnion(nutzer.uid) };
+  if (alsVerwalter) neu.verwalter = arrayUnion(nutzer.uid);
+  // In der geschlossenen Gruppe steht der Name eines einfachen Mitglieds
+  // NICHT im Orbit, sonst könnten sich die Mitglieder gegenseitig auslesen.
+  if (offeneGruppe || alsVerwalter) {
+    neu["info." + nutzer.uid] = meinSteckbrief();
+  }
+
+  try {
+    await updateDoc(kref, neu);
+  } catch (e) {
+    console.error("Beitritt:", e);
+    // Gibt es den Orbit nicht mehr, liegt nur noch die Einladung herum
+    await deleteDoc(doc(db, "einladungen", ein.id)).catch(() => {});
+    alert(t("eSpeichern", { code: e.code || e.message }));
+    return;
+  }
+
+  // Jetzt bin ich Mitglied und darf meinen Steckbrief hinterlegen
+  await setDoc(doc(db, "kreisinfo", ein.kreisId + "_" + nutzer.uid), {
+    kreisId: ein.kreisId, uid: nutzer.uid,
+    name: meinName(), email: (nutzer.email || "").toLowerCase()
+  }).catch((e) => console.warn("kreisinfo:", e.code));
+
+  await deleteDoc(doc(db, "einladungen", ein.id)).catch(() => {});
+  await meldeAntwort(ein, ein.kreisName || "", true);
+}
+
+async function einladungAblehnen(ein) {
+  if (!confirm(t("eiAblehnenFrage", { kreis: ein.kreisName || "" }))) return;
+  try {
+    await deleteDoc(doc(db, "einladungen", ein.id));
+    await meldeAntwort(ein, ein.kreisName || "", false);
+  } catch (e) {
+    alert(t("eSpeichern", { code: e.code || e.message }));
+  }
+}
+
+async function meldeAntwort(ein, kreisName, ja) {
+  if (!ein.vonUid || ein.vonUid === nutzer.uid) return;
   try {
     await addDoc(collection(db, "nachrichten"), {
-      anUid: nutzer.uid, vonUid: nutzer.uid, vonName: meinName(),
-      art: "willkommen", text: kreisName, kreisName,
+      anUid: ein.vonUid, vonUid: nutzer.uid, vonName: meinName(),
+      art: ja ? "angenommen" : "abgelehnt",
+      text: kreisName, kreisName,
       gelesen: false, erstelltAm: serverTimestamp()
     });
-    if (anwerberUid && anwerberUid !== nutzer.uid) {
-      await addDoc(collection(db, "nachrichten"), {
-        anUid: anwerberUid, vonUid: nutzer.uid, vonName: meinName(),
-        art: "beigetreten", text: kreisName, kreisName,
-        gelesen: false, erstelltAm: serverTimestamp()
-      });
-    }
-  } catch (e) { console.warn("Beitritt melden:", e.code); }
+  } catch (e) { console.warn("Antwort melden:", e.code); }
 }
-
-/* Einladungen werden nicht nur beim Anmelden geprüft, sondern auch
-   jedes Mal, wenn die App wieder in den Vordergrund kommt. Sonst müsste
-   jemand, der schon angemeldet ist, die App erst neu starten, um in
-   einen Kreis zu kommen. Höchstens alle 20 Sekunden, damit das Wechseln
-   zwischen Fenstern keine Abfragen regnen lässt. */
-let letztePruefung = 0;
-async function pruefeEinladungen(erzwingen) {
-  if (!nutzer || !profil.name) return;
-  const jetzt = Date.now();
-  if (!erzwingen && jetzt - letztePruefung < 20000) return;
-  letztePruefung = jetzt;
-  await einladungenAnnehmen();
-}
-document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) pruefeEinladungen();
-});
-window.addEventListener("focus", () => pruefeEinladungen());
-window.addEventListener("online", () => pruefeEinladungen(true));
 
 /* ===================================================================
    DATEN LADEN
@@ -817,9 +811,14 @@ function startePost() {
   );
 }
 function zeigeZaehler() {
-  const neu = nachrichten.filter((n) => !n.gelesen).length;
+  // Offene Einladungen zählen mit, die sind das Dringendste in der Glocke
+  const neu = nachrichten.filter((n) => !n.gelesen).length + meineEinladungen.length;
   $("postZahl").textContent = neu > 9 ? "9+" : String(neu);
   $("postZahl").classList.toggle("versteckt", neu === 0);
+
+  const ein = meineEinladungen.length;
+  $("orbitZahl").textContent = ein > 9 ? "9+" : String(ein);
+  $("orbitZahl").classList.toggle("versteckt", ein === 0);
 }
 
 /* ---------- Einträge ----------
@@ -928,12 +927,7 @@ async function zuweisungenSpiegeln() {
 
 $("nav").addEventListener("click", (ev) => {
   const b = ev.target.closest("button[data-v]");
-  if (!b) return;
-  ansicht = b.dataset.v;
-  [...$("nav").children].forEach((x) => x.classList.toggle("an", x === b));
-  if (ansicht === "monat") anker = gewaehlt;
-  merke("ansicht", ansicht);
-  zeichne();
+  if (b) setzeAnsicht(b.dataset.v);
 });
 
 $("filter").addEventListener("click", (ev) => {
@@ -946,7 +940,9 @@ $("filter").addEventListener("click", (ev) => {
 });
 
 (function stelleWieder() {
-  const a = gemerkt("ansicht"), f = gemerkt("filter");
+  let a = gemerkt("ansicht");
+  const f = gemerkt("filter");
+  if (a === "liste") a = "fristen";     // hieß früher so
   if (a && [...$("nav").children].some((x) => x.dataset.v === a)) {
     ansicht = a;
     [...$("nav").children].forEach((x) => x.classList.toggle("an", x.dataset.v === a));
@@ -961,7 +957,7 @@ function schiebe(richtung) {
     const d = ausText(anker);
     d.setDate(1); d.setMonth(d.getMonth() + richtung);
     anker = alsText(d);
-  } else if (ansicht === "liste") anker = plus(anker, richtung * 30);
+  } else if (ansicht === "fristen") return;   // Fristen kennen kein Blättern
   else return;
   zeichne();
 }
@@ -977,8 +973,9 @@ function zeichne() {
   if (!nutzer) return;
   if (sucheAn) { sucheAusfuehren(); return; }
 
-  $("zeitleiste").classList.toggle("versteckt", ansicht === "aufgaben");
-  $("filter").classList.toggle("versteckt", ansicht === "aufgaben");
+  const ohneLeiste = ansicht === "aufgaben" || ansicht === "fristen";
+  $("zeitleiste").classList.toggle("versteckt", ohneLeiste);
+  $("filter").classList.toggle("versteckt", ohneLeiste);
 
   const b = $("buehne");
   b.innerHTML = "";
@@ -987,7 +984,7 @@ function zeichne() {
   else if (ansicht === "woche")    { kopfWoche(); maleWoche(b); }
   else if (ansicht === "monat")    { kopfMonat(); maleMonat(b); }
   else if (ansicht === "aufgaben") { maleAufgaben(b); }
-  else                             { kopfListe(); maleListe(b); }
+  else                             { maleFristen(b); }
 }
 
 function passtZumFilter(e) { return filter === "alles" || e.typ === filter; }
@@ -1016,10 +1013,7 @@ function kopfMonat() {
   $("zeitTitel").textContent = `${liste("monate")[d.getMonth()]} ${d.getFullYear()}`;
   $("zeitUnter").textContent = "";
 }
-function kopfListe() {
-  $("zeitTitel").textContent = t("wasAnsteht");
-  $("zeitUnter").textContent = t("naechste30");
-}
+
 
 /* ---------- Auswahl ---------- */
 
@@ -1706,19 +1700,38 @@ function maleAufgaben(box) {
   abschnitt("aErledigt", fertig);
 }
 
-/* ---------- Liste ---------- */
+/* ---------- Fristen ----------
+   Alles, was einen Stichtag hat, nach Dringlichkeit statt nach Datum.
+   Aufgaben ohne Frist stehen weiter unter Aufgaben.                     */
 
-function maleListe(box) {
-  const von = anker, bis = plus(anker, 30);
-  let leer = true;
-  for (let tg = von; tg <= bis; tg = plus(tg, 1)) {
-    const l = sortiert(anTag(tg));
-    if (!l.length) continue;
-    leer = false;
-    box.appendChild(trenner(tagTitel(tg) + (tg === heute() ? " · " + t("heute") : "")));
-    l.forEach((e) => box.appendChild(zeile(e, tg)));
+function maleFristen(box) {
+  const h = heute();
+  const mit = meineEintraege.filter((e) => e.frist).map((e) => ({
+    e, tage: tageBis(e.frist, h), fertig: erledigtAm(e, e.datum)
+  }));
+
+  if (!mit.length) {
+    box.appendChild(leerKasten("○", t("frKeine")));
+    return;
   }
-  if (leer) box.appendChild(leerKasten("○", t("nichts30")));
+
+  const offen  = mit.filter((x) => !x.fertig).sort((a, b) => a.tage - b.tage);
+  const fertig = mit.filter((x) =>  x.fertig)
+                    .sort((a, b) => b.e.frist.localeCompare(a.e.frist)).slice(0, 15);
+
+  box.appendChild(el("div", "hinweis", t("frAlleMit")));
+
+  const gruppe = (schluessel, liste2, warn) => {
+    if (!liste2.length) return;
+    box.appendChild(trenner(t(schluessel), warn));
+    liste2.forEach((x) => box.appendChild(zeile(x.e, x.e.datum, true)));
+  };
+
+  gruppe("aUeberfaellig", offen.filter((x) => x.tage < 0), true);
+  gruppe("aHeuteFaellig", offen.filter((x) => x.tage === 0), true);
+  gruppe("aDieseWoche",   offen.filter((x) => x.tage > 0 && x.tage <= 7));
+  gruppe("aSpaeter",      offen.filter((x) => x.tage > 7));
+  gruppe("aErledigt",     fertig);
 }
 
 /* ===================================================================
@@ -1929,8 +1942,7 @@ function setzeTyp(neu) {
 }
 function setzeWdh(neu) {
   wiederholung = neu;
-  $("wdhEinmal").classList.toggle("an", neu === "einmal");
-  $("wdhSerie").classList.toggle("an", neu === "serie");
+  $("fSerieAn").checked = (neu === "serie");
   $("serieFeld").classList.toggle("versteckt", neu !== "serie");
   setzeLabelDatum();
 }
@@ -1940,8 +1952,8 @@ function setzeLabelDatum() {
 }
 $("typTermin").addEventListener("click", () => setzeTyp("termin"));
 $("typTask").addEventListener("click", () => setzeTyp("task"));
-$("wdhEinmal").addEventListener("click", () => setzeWdh("einmal"));
-$("wdhSerie").addEventListener("click", () => setzeWdh("serie"));
+$("fSerieAn").addEventListener("change", (ev) =>
+  setzeWdh(ev.target.checked ? "serie" : "einmal"));
 
 function baueTageWahl() {
   const box = $("tageWahl");
@@ -2263,12 +2275,18 @@ $("belExklusiv").addEventListener("click", () => setzeBelegung("exklusiv"));
 
 $("kreiseBtn").addEventListener("click", () => { zeigeKreise(); $("dlgKreise").showModal(); });
 $("kreiseZu").addEventListener("click", () => $("dlgKreise").close());
-$("kreiseZu2").addEventListener("click", () => $("dlgKreise").close());
+$("orbitNeuZu").addEventListener("click", () => $("dlgOrbitNeu").close());
+$("orbitNeuBtn").addEventListener("click", () => {
+  $("kName").value = "";
+  $("kreisFehler").textContent = "";
+  setzeArt("kreis");
+  setzeBelegung("parallel");
+  $("dlgOrbitNeu").showModal();
+});
 
 function zeigeKreise() {
   const darf = darfKreiseAnlegen();
-  $("neuerKreisBlock").classList.toggle("versteckt", !darf);
-  $("kreiseNurZu").classList.toggle("versteckt", darf);
+  $("orbitNeuBtn").classList.toggle("versteckt", !darf);
 
   const box = $("kreisListe");
   box.innerHTML = "";
@@ -2429,7 +2447,8 @@ function zeigeKreise() {
   });
 }
 
-$("kreisAnlegen").addEventListener("click", async () => {
+$("formOrbitNeu").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
   $("kreisFehler").textContent = "";
   if (!darfKreiseAnlegen()) { $("kreisFehler").textContent = t("kDarfNicht"); return; }
   const name = $("kName").value.trim();
@@ -2444,6 +2463,7 @@ $("kreisAnlegen").addEventListener("click", async () => {
       erstelltAm: serverTimestamp()
     });
     $("kName").value = "";
+    $("dlgOrbitNeu").close();
   } catch (e) {
     $("kreisFehler").textContent = t("eSpeichern", { code: e.code || e.message });
   }
@@ -2580,6 +2600,7 @@ $("formEinladen").addEventListener("submit", async (ev) => {
     // Feste Kennung, damit die Sicherheitsregel sie nachschlagen kann.
     await setDoc(doc(db, "einladungen", einladenKreis.id + "_" + mail), {
       kreisId: einladenKreis.id, kreisName: einladenKreis.name, email: mail,
+      art: einladenKreis.art || "kreis",
       vonUid: nutzer.uid, vonName: meinName(),
       alsVerwalter: $("eVerwalter").checked,
       erstelltAm: serverTimestamp()
@@ -2707,6 +2728,33 @@ function wannText(zeit) {
   return `${d.getDate()}.${d.getMonth() + 1}.`;
 }
 
+/* Eine offene Einladung sieht aus wie eine Nachricht, hat aber zwei
+   Knöpfe. Erst ein Tipp darauf trägt jemanden in den Orbit ein. */
+function einladungsKarte(ein) {
+  const k = el("div", "post neu");
+  const kopf = el("div");
+  kopf.style.cssText = "display:flex;align-items:baseline;gap:8px";
+  kopf.appendChild(el("span", "von", ein.vonName || t("nJemand")));
+  kopf.appendChild(el("span", "wann", t("eiOffen")));
+  k.appendChild(kopf);
+  k.appendChild(el("div", "text",
+    t("eiFrage", { name: ein.vonName || t("nJemand"), kreis: ein.kreisName || "" })));
+  if (ein.alsVerwalter) k.appendChild(el("div", "wann", t("kEingeladenVerw")));
+
+  const knoepfe = el("div", "knoepfe");
+  const ja = el("button", null, t("eiAnnehmen"));
+  ja.type = "button";
+  ja.style.cssText = "border-color:var(--gruen);color:var(--gruen);font-weight:600";
+  ja.addEventListener("click", () => { ja.disabled = true; einladungAnnehmen(ein); });
+  const nein = el("button", null, t("eiAblehnen"));
+  nein.type = "button";
+  nein.style.cssText = "border-color:var(--rot);color:var(--rot)";
+  nein.addEventListener("click", () => einladungAblehnen(ein));
+  knoepfe.appendChild(ja); knoepfe.appendChild(nein);
+  k.appendChild(knoepfe);
+  return k;
+}
+
 function postText(n) {
   if (n.art === "geteilt") return t("nHatGeteilt", { titel: n.text, kreis: n.kreisName || "—" });
   if (n.art === "zuweisung") return t("nHatZugewiesen", { titel: n.text });
@@ -2714,13 +2762,21 @@ function postText(n) {
   if (n.art === "absage")    return t("nHatAbgesagt",   { titel: n.text });
   if (n.art === "willkommen")  return t("nWillkommen",  { kreis: n.kreisName || n.text });
   if (n.art === "beigetreten") return t("nBeigetreten", { kreis: n.kreisName || n.text });
+  if (n.art === "angenommen")  return t("nAngenommen",  { kreis: n.kreisName || n.text });
+  if (n.art === "abgelehnt")   return t("nAbgelehnt",   { kreis: n.kreisName || n.text });
   return n.text;
 }
 
 function zeigePost() {
   const box = $("postListe");
   box.innerHTML = "";
-  if (!nachrichten.length) { box.appendChild(el("div", "leer", t("nKeine"))); return; }
+
+  meineEinladungen.forEach((ein) => box.appendChild(einladungsKarte(ein)));
+
+  if (!nachrichten.length) {
+    if (!meineEinladungen.length) box.appendChild(el("div", "leer", t("nKeine")));
+    return;
+  }
 
   nachrichten.slice(0, 60).forEach((n) => {
     const k = el("div", "post" + (n.gelesen ? "" : " neu"));
@@ -2903,17 +2959,66 @@ function freieFenster(belegt, von, bis, frueh, spaet, dauer) {
 }
 
 /* ===================================================================
-   KONTO
+   MENÜ HINTER DEM PROFILBILD
+   Ansichten, Übersicht und Einstellungen an einer Stelle. Die Reiter
+   oben bleiben trotzdem, für den schnellen Wechsel.
    =================================================================== */
 
+const ANSICHTEN = [
+  ["tag", "vTag"], ["woche", "vWoche"], ["monat", "vMonat"],
+  ["aufgaben", "vAufgaben"], ["fristen", "vListe"]
+];
+
+function baueMenueAnsichten() {
+  const box = $("menueAnsichten");
+  if (!box) return;
+  box.innerHTML = "";
+  ANSICHTEN.forEach(([wert, schluessel]) => {
+    const b = el("button", "menuePunkt" + (ansicht === wert ? " an" : ""), t(schluessel));
+    b.type = "button";
+    b.addEventListener("click", () => {
+      setzeAnsicht(wert);
+      $("dlgMenue").close();
+    });
+    box.appendChild(b);
+  });
+}
+
+function setzeAnsicht(wert) {
+  ansicht = wert;
+  [...$("nav").children].forEach((x) => x.classList.toggle("an", x.dataset.v === wert));
+  if (wert === "monat") anker = gewaehlt;
+  merke("ansicht", wert);
+  zeichne();
+}
+
 $("michBtn").addEventListener("click", () => {
-  zeigeMeineZahlen();
   $("michName").textContent = meinName();
+  $("michMail").textContent = nutzer.email || "";
   $("betriebBtn").classList.toggle("versteckt", !istBetreiber());
-  $("dlgMich").showModal();
+  baueMenueAnsichten();
+  $("dlgMenue").showModal();
   zeigeFassung();
 });
-$("michZu").addEventListener("click", () => $("dlgMich").close());
+$("michZu").addEventListener("click", () => $("dlgMenue").close());
+
+/* ===================================================================
+   ÜBERSICHT
+   Die Zahlen sind Knöpfe. Ein Tipp darauf zeigt, was dahintersteckt,
+   sonst ist eine Zahl nur eine Zahl.
+   =================================================================== */
+
+$("mUebersicht").addEventListener("click", () => {
+  $("dlgMenue").close();
+  oeffneUebersicht();
+});
+$("uebersichtZu").addEventListener("click", () => $("dlgUebersicht").close());
+$("uebersichtZurueck").addEventListener("click", () => zeigeMeineZahlen());
+
+function oeffneUebersicht() {
+  zeigeMeineZahlen();
+  $("dlgUebersicht").showModal();
+}
 
 function kachel(zahl2, text, warn) {
   const k = el("div", "kachel" + (warn ? " warn" : ""));
@@ -2922,24 +3027,64 @@ function kachel(zahl2, text, warn) {
   return k;
 }
 
+function kachelKnopf(zahl2, text, warn, beiTipp) {
+  const k = el("button", "kachel" + (warn ? " warn" : ""));
+  k.type = "button";
+  k.appendChild(el("b", null, String(zahl2)));
+  k.appendChild(el("span", null, text));
+  k.addEventListener("click", beiTipp);
+  return k;
+}
+
+function meineSachen() {
+  return meineEintraege.filter((e) => e.ownerId === nutzer.uid);
+}
+
 function zeigeMeineZahlen() {
   const box = $("meineZahlen");
   box.innerHTML = "";
+  $("uebersichtListe").classList.add("versteckt");
+  $("uebersichtListe").innerHTML = "";
+  $("uebersichtZurueck").classList.add("versteckt");
+  $("uebersichtUnter").textContent = t("uTippZahl");
+  box.classList.remove("versteckt");
+
   const h = heute();
-  const meins = meineEintraege.filter((e) => e.ownerId === nutzer.uid);
+  const meins   = meineSachen();
   const termine = meins.filter((e) => e.typ === "termin");
-  const tasks = meins.filter((e) => e.typ === "task");
-  const offen = tasks.filter((e) => !istSerie(e) && e.status !== "erledigt");
-  const spaet = offen.filter((e) => e.frist && e.frist < h);
-  const serien = meins.filter(istSerie);
+  const tasks   = meins.filter((e) => e.typ === "task");
+  const offen   = tasks.filter((e) => !istSerie(e) && e.status !== "erledigt");
+  const spaet   = offen.filter((e) => e.frist && e.frist < h);
+  const serien  = meins.filter(istSerie);
   const geteilt = meins.filter((e) => (e.kreisIds || []).length);
 
-  box.appendChild(kachel(termine.length, t("koTermine")));
-  box.appendChild(kachel(offen.length, t("koOffen")));
-  box.appendChild(kachel(spaet.length, t("koUeberfaellig"), spaet.length > 0));
-  box.appendChild(kachel(serien.length, t("koSerien")));
-  box.appendChild(kachel(meineKreise.length, t("koKreise")));
-  box.appendChild(kachel(geteilt.length, t("koGeteilt")));
+  box.appendChild(kachelKnopf(termine.length, t("koTermine"), false,
+    () => zeigeZahlenListe(t("koTermine"), termine)));
+  box.appendChild(kachelKnopf(offen.length, t("koOffen"), false,
+    () => zeigeZahlenListe(t("koOffen"), offen)));
+  box.appendChild(kachelKnopf(spaet.length, t("koUeberfaellig"), spaet.length > 0,
+    () => zeigeZahlenListe(t("koUeberfaellig"), spaet)));
+  box.appendChild(kachelKnopf(serien.length, t("koSerien"), false,
+    () => zeigeZahlenListe(t("koSerien"), serien)));
+  box.appendChild(kachelKnopf(meineKreise.length, t("koKreise"), false,
+    () => { $("dlgUebersicht").close(); zeigeKreise(); $("dlgKreise").showModal(); }));
+  box.appendChild(kachelKnopf(geteilt.length, t("koGeteilt"), false,
+    () => zeigeZahlenListe(t("koGeteilt"), geteilt)));
+}
+
+function zeigeZahlenListe(titel, liste2) {
+  const box = $("uebersichtListe");
+  box.innerHTML = "";
+  $("meineZahlen").classList.add("versteckt");
+  box.classList.remove("versteckt");
+  $("uebersichtZurueck").classList.remove("versteckt");
+  $("uebersichtUnter").textContent = titel;
+
+  if (!liste2.length) { box.appendChild(el("div", "leer", t("uNichts"))); return; }
+  [...liste2]
+    .sort((a, b) => (b.datum || "").localeCompare(a.datum || ""))
+    .slice(0, 80)
+    .forEach((e) => box.appendChild(zeile(e, e.datum, true)));
 }
 
 /* ===================================================================
