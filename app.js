@@ -365,13 +365,15 @@ let stopPost = null, stopBelegt = null, stopSlots = null, stopEinladungen = null
 let bearbeiteId = null, bearbeiteTag = null;
 let typ = "termin", wiederholung = "einmal";
 let gewaehlteTage = [], gewaehlteKreise = [], gewaehltePersonen = [];
-let neueFarbe = FARBEN[0], neueArt = "kreis", neueBelegung = "parallel";
+let neueFarbe = FARBEN[0], neueArt = "kreis";
 let einladenKreis = null, einstKreis = null;
-let einstArten = [], einstZeiten = [], einstBelegung = "parallel", einstTage = [];
+let einstArten = [], einstZeiten = [], einstPausen = [];
+let einstTage = [], einstArtTage = [], einstPauseTage = [];
 let schreibenAnUid = null;
 let sucheAn = false;
 let nachgeruestet = false;
 let vorgabeDauer = 0;          // Dauer aus der gewählten Terminart
+let gewaehlteArt = "";         // Name der gewählten Terminart
 
 /* ===================================================================
    KREISE: WER SIEHT WEN
@@ -382,7 +384,6 @@ let vorgabeDauer = 0;          // Dauer aus der gewählten Terminart
    =================================================================== */
 
 function istStern(k) { return (k.art || "kreis") === "stern"; }
-function istExklusiv(k) { return (k.belegung || "parallel") === "exklusiv"; }
 function binVerwalter(k) { return (k.verwalter || []).includes(nutzer.uid); }
 
 /* Wer darf durch diesen Kreis sehen, dass ICH belegt bin */
@@ -418,8 +419,16 @@ function belegtFuerListe() {
 function kreisVon(id) { return meineKreise.find((k) => k.id === id) || null; }
 
 /* ===================================================================
-   ARBEITSZEITEN EINES KREISES
-   zeiten: [{tage:[0..6], von:"17:00", bis:"22:00"}]
+   ZEITEN EINES ORBITS
+   ------------------------------------------------------------------
+   zeiten:  [{tage:[0..6], von:"17:00", bis:"22:00"}]   Rahmen für den Plan
+   arten:   [{name, dauer, tage, von, bis, plaetze}]    was angeboten wird
+   pausen:  [{tage, von, bis}]                          da entsteht nichts
+
+   plaetze sagt, wie viele dieselbe Zeit nehmen dürfen:
+     1    eine Fahrstunde gehört einem
+     4    vier Fahrer auf derselben Tour
+     0    keine Begrenzung, dann gibt es auch kein festes Raster
    =================================================================== */
 
 function zeitenAnTag(k, tag) {
@@ -431,19 +440,85 @@ function zeitenAnTag(k, tag) {
                  .sort((a, b) => a.von - b.von);
 }
 
-/* Die Zeitfenster eines exklusiven Kreises an einem Tag */
-function raster(k, tag) {
-  const dauer = (k.arten && k.arten[0] && Number(k.arten[0].dauer)) || 60;
-  const raus = [];
-  zeitenAnTag(k, tag).forEach((z) => {
-    for (let a = z.von; a + dauer <= z.bis; a += dauer) {
-      raus.push({ von: a, bis: a + dauer });
-    }
-  });
-  return raus;
+/* Wie viele Plätze hat diese Terminart. Alte Orbits kannten das Feld
+   noch nicht, dort entscheidet die frühere Einstellung belegung. */
+function plaetzeVon(k, art) {
+  if (art && art.plaetze !== undefined && art.plaetze !== "") return Number(art.plaetze) || 0;
+  return (k.belegung || "parallel") === "exklusiv" ? 1 : 0;
 }
-function slotKennung(kreisId, tag, von) {
-  return `${kreisId}_${tag}_${ausMinuten(von)}`;
+
+/* In welchen Zeitfenstern läuft diese Terminart an diesem Tag */
+function artZeiten(k, art, tag) {
+  const wt = wochentag(tag);
+  if (Array.isArray(art.tage) && art.tage.length) {
+    if (!art.tage.includes(wt)) return [];
+    const von = minuten(art.von), bis = minuten(art.bis);
+    if (von === null || bis === null || bis <= von) return [];
+    return [{ von, bis }];
+  }
+  return zeitenAnTag(k, tag);      // keine eigene Zeit: der Rahmen gilt
+}
+
+function inPause(k, tag, von, bis) {
+  const wt = wochentag(tag);
+  return (k.pausen || []).some((pz) => {
+    if (Array.isArray(pz.tage) && pz.tage.length && !pz.tage.includes(wt)) return false;
+    const a = minuten(pz.von), b = minuten(pz.bis);
+    return a !== null && b !== null && von < b && bis > a;
+  });
+}
+
+function pausenAnTag(k, tag) {
+  const wt = wochentag(tag);
+  return (k.pausen || [])
+    .filter((pz) => !Array.isArray(pz.tage) || !pz.tage.length || pz.tage.includes(wt))
+    .map((pz) => ({ von: minuten(pz.von), bis: minuten(pz.bis) }))
+    .filter((pz) => pz.von !== null && pz.bis !== null && pz.bis > pz.von);
+}
+
+/* Ein Zeitraum ohne die Pausen: übrig bleiben die freien Stücke */
+function ohnePausen(k, tag, von, bis) {
+  let stuecke = [{ von, bis }];
+  pausenAnTag(k, tag).forEach((pz) => {
+    const neu = [];
+    stuecke.forEach((st) => {
+      if (pz.bis <= st.von || pz.von >= st.bis) { neu.push(st); return; }
+      if (pz.von > st.von) neu.push({ von: st.von, bis: pz.von });
+      if (pz.bis < st.bis) neu.push({ von: pz.bis, bis: st.bis });
+    });
+    stuecke = neu;
+  });
+  return stuecke;
+}
+
+/* Alle Zeitfenster eines Orbits an einem Tag, nach Terminart getrennt.
+   Nach einer Pause fängt das Raster neu an. Sonst bliebe hinter jeder
+   Pause ein angebrochener Rest liegen, den niemand buchen kann. */
+function fensterFuer(k, tag) {
+  const raus = [];
+  (k.arten || []).forEach((art) => {
+    const plaetze = plaetzeVon(k, art);
+    if (!(plaetze >= 1)) return;                 // frei planbar, kein Raster
+    const dauer = Number(art.dauer) || 60;
+    artZeiten(k, art, tag).forEach((z) => {
+      ohnePausen(k, tag, z.von, z.bis).forEach((st) => {
+        for (let x = st.von; x + dauer <= st.bis; x += dauer) {
+          raus.push({ von: x, bis: x + dauer, art, plaetze });
+        }
+      });
+    });
+  });
+  return raus.sort((a, b) => a.von - b.von);
+}
+
+/* Hat dieser Orbit überhaupt feste Zeitfenster */
+function hatRaster(k) {
+  return (k.arten || []).some((a) => plaetzeVon(k, a) >= 1);
+}
+function istExklusiv(k) { return hatRaster(k); }
+
+function slotKennung(kreisId, tag, von, platz) {
+  return `${kreisId}_${tag}_${ausMinuten(von)}_${platz}`;
 }
 
 /* ===================================================================
@@ -963,7 +1038,9 @@ function schiebe(richtung) {
 }
 $("zurueck").addEventListener("click", () => schiebe(-1));
 $("vor").addEventListener("click", () => schiebe(1));
-$("heuteBtn").addEventListener("click", () => { anker = heute(); gewaehlt = heute(); zeichne(); });
+$("heuteBtn").addEventListener("click", () => {
+  anker = heute(); gewaehlt = heute(); miniAnker = heute(); zeichne();
+});
 
 /* ===================================================================
    ZEICHNEN
@@ -977,6 +1054,8 @@ function zeichne() {
   $("zeitleiste").classList.toggle("versteckt", ohneLeiste);
   $("filter").classList.toggle("versteckt", ohneLeiste);
 
+  maleSeite();
+
   const b = $("buehne");
   b.innerHTML = "";
 
@@ -988,6 +1067,119 @@ function zeichne() {
 }
 
 function passtZumFilter(e) { return filter === "alles" || e.typ === filter; }
+
+/* ===================================================================
+   SEITENLEISTE (nur am Schreibtisch sichtbar)
+   Mini-Monat zum Springen, die Orbits zum Umschalten, und was von
+   früher offen ist. Am Handy ist das alles ausgeblendet.
+   =================================================================== */
+
+let miniAnker = heute();
+
+function maleSeite() {
+  maleMiniMonat();
+  maleSeiteOrbits();
+  maleSeiteOffen();
+}
+
+function maleMiniMonat() {
+  const box = $("miniGitter");
+  if (!box) return;
+  const d = ausText(miniAnker); d.setDate(1);
+  const monatNr = d.getMonth();
+  const start = montagVon(alsText(d));
+  $("miniTitel").textContent =
+    `${liste("monate")[monatNr].slice(0, 3)} ${d.getFullYear()}`;
+
+  box.innerHTML = "";
+  liste("kurzTage").forEach((k) => box.appendChild(el("div", "wt", k.slice(0, 2))));
+
+  for (let i = 0; i < 42; i++) {
+    const tag = plus(start, i);
+    const imMonat = ausText(tag).getMonth() === monatNr;
+    const b = el("button", "miniTag");
+    b.type = "button";
+    if (!imMonat) b.classList.add("fremd");
+    if (tag === heute()) b.classList.add("heute");
+    if (tag === anker || (ansicht === "monat" && tag === gewaehlt)) b.classList.add("gewaehlt");
+    if (istFeiertag(tag)) b.classList.add("feier");
+    if (ferienRoh(tag)) b.classList.add("ferien");
+    b.appendChild(el("span", null, String(ausText(tag).getDate())));
+
+    const l = anTag(tag);
+    const pp = el("div", "pp");
+    l.slice(0, 3).forEach((e) => {
+      const i2 = el("i");
+      i2.style.background = balkenFarbe(e);
+      pp.appendChild(i2);
+    });
+    b.appendChild(pp);
+
+    b.addEventListener("click", () => {
+      anker = tag; gewaehlt = tag; miniAnker = tag;
+      if (ansicht === "aufgaben" || ansicht === "fristen") setzeAnsicht("tag");
+      else zeichne();
+    });
+    box.appendChild(b);
+  }
+}
+
+$("miniZurueck").addEventListener("click", () => {
+  const d = ausText(miniAnker); d.setDate(1); d.setMonth(d.getMonth() - 1);
+  miniAnker = alsText(d); maleMiniMonat();
+});
+$("miniVor").addEventListener("click", () => {
+  const d = ausText(miniAnker); d.setDate(1); d.setMonth(d.getMonth() + 1);
+  miniAnker = alsText(d); maleMiniMonat();
+});
+
+function maleSeiteOrbits() {
+  const box = $("seiteOrbits");
+  if (!box) return;
+  box.innerHTML = "";
+  const mach = (id, text, farbe) => {
+    const b = el("button", planKreis === id ? "an" : "");
+    b.type = "button";
+    const p = el("span", "kreisPunkt");
+    p.style.background = farbe || "var(--text3)";
+    b.appendChild(p);
+    b.appendChild(el("span", null, text));
+    b.addEventListener("click", () => {
+      planKreis = id; merke("planKreis", id);
+      if (ansicht !== "tag") setzeAnsicht("tag"); else zeichne();
+    });
+    box.appendChild(b);
+  };
+  mach("", t("planIch"), "var(--akzent)");
+  meineKreise.forEach((k) => mach(k.id, k.name, k.farbe));
+}
+
+function maleSeiteOffen() {
+  const box = $("seiteOffen");
+  if (!box) return;
+  const h = heute();
+  const offen = meineEintraege.filter((e) =>
+    e.typ === "task" && !istSerie(e) && e.status === "offen" &&
+    e.ownerId === nutzer.uid && (e.frist ? e.frist < h : e.datum < h))
+    .sort((a, b) => (a.frist || a.datum).localeCompare(b.frist || b.datum));
+
+  $("seiteOffenBlock").classList.toggle("versteckt", !offen.length);
+  box.innerHTML = "";
+  offen.slice(0, 12).forEach((e) => {
+    const z = el("div", "seiteOffenZeile");
+    const hk = el("button", "haken");
+    hk.type = "button";
+    hk.style.width = "18px"; hk.style.height = "18px"; hk.style.fontSize = "11px";
+    hk.setAttribute("aria-label", t("abhaken"));
+    hk.addEventListener("click", (ev) => { ev.stopPropagation(); hakenUmschalten(e, e.datum); });
+    z.appendChild(hk);
+    const txt = el("span", null, e.titel);
+    z.appendChild(txt);
+    z.appendChild(el("small", null, kurzDatum(e.frist || e.datum)));
+    z.addEventListener("click", () => oeffneEintrag(e, e.datum));
+    box.appendChild(z);
+  });
+}
 function marke(text, frei) { return el("span", "tagMarke" + (frei ? " frei" : ""), text); }
 
 function kopfTag() {
@@ -1269,7 +1461,7 @@ function aufgabenChip(e, tag, mitDatum) {
 
 /* Auswahl, wessen Plan gezeigt wird */
 function kreisWahlLeiste() {
-  const z = el("div", "ohneZeit");
+  const z = el("div", "ohneZeit kreisWahl");
   const mach = (id, text) => {
     const b = el("button", "chip");
     b.type = "button";
@@ -1388,68 +1580,102 @@ function malePersonenPlan(box, tag, k) {
   if (!leute.length) box.appendChild(el("div", "leer", t("planNiemand")));
 }
 
-/* Exklusiver Kreis: eine gemeinsame Spur mit festen Zeitfenstern */
+/* Service-Orbit: je Terminart eine Spur mit festen Zeitfenstern.
+   Automatik links, Manuell daneben, jede mit ihren eigenen Zeiten. */
 function maleSlotPlan(box, tag, k) {
-  const fenster = raster(k, tag);
-  const belegteSlots = slots.filter((s) => s.kreisId === k.id && s.datum === tag);
+  const fenster = fensterFuer(k, tag);
+  const belegteSlots = slots.filter((x) => x.kreisId === k.id && x.datum === tag);
   const eintraege = anTag(tag).filter((e) => (e.kreisIds || []).includes(k.id));
+  const pausen = pausenAnTag(k, tag);
 
-  const stuecke = [];
-  fenster.forEach((f) => stuecke.push(f));
+  // Spuren: jede Terminart mit Raster, dazu eine für alles Übrige
+  const arten = (k.arten || []).filter((a) => plaetzeVon(k, a) >= 1);
+  const spuren = arten.map((a) => ({ art: a, name: a.name }));
+  const rest = eintraege.filter((e) => !arten.some((a) => a.name === e.artName));
+  if (rest.length || !spuren.length) spuren.push({ art: null, name: k.name });
+
+  const stuecke = [...fenster, ...pausen];
   eintraege.forEach((e) => { const zr = zeitraum(e); if (zr) stuecke.push(zr); });
 
   const f = tagFenster(tag, k, stuecke);
-  const kopf = el("div", "planName");
-  const p = el("span", "kreisPunkt");
-  p.style.background = k.farbe;
-  kopf.appendChild(p);
-  kopf.appendChild(el("span", null, k.name));
-  const frei = fenster.filter((x) =>
-    !belegteSlots.some((s) => minuten(s.start) === x.von)).length;
-  kopf.appendChild(el("span", "klein2", t("slFrei", { n: frei })));
-
-  const g = planGeruest(box, [kopf], f.vonStd, f.bisStd, true);
-  const spalte = g.spalten[0];
-
-  // Erst die freien Fenster als gestrichelte Flächen
-  fenster.forEach((x) => {
-    const genommen = belegteSlots.find((s) => minuten(s.start) === x.von);
-    if (genommen) return;
-    const b = el("button", "balken slot");
-    b.type = "button";
-    b.textContent = ausMinuten(x.von);
-    b.title = t("planBuchen");
-    setzeBalken(b, { ...x, versatz: 0, anteil: 100 }, g);
-    b.addEventListener("click", () => buchen(k, tag, x));
-    spalte.appendChild(b);
+  const koepfe = spuren.map((sp) => {
+    const kopf = el("div", "planName");
+    const p = el("span", "kreisPunkt");
+    p.style.background = k.farbe;
+    kopf.appendChild(p);
+    kopf.appendChild(el("span", null, sp.name));
+    if (sp.art) {
+      const frei = fenster.filter((x) => x.art === sp.art)
+        .reduce((summe, x) => summe + freiePlaetze(x, belegteSlots), 0);
+      kopf.appendChild(el("span", "klein2", t("slFrei", { n: frei })));
+    }
+    return kopf;
   });
 
-  // Dann die vergebenen
-  const sichtbar = new Set(eintraege.map((e) => minuten(e.start)));
-  verteile(eintraege.map((e) => ({ ...zeitraum(e), e })).filter((x) => x.von !== undefined))
-    .forEach((x) => {
-      const b = eintragsBalken(x.e, tag, g, true);
-      setzeBalken(b, x, g);
+  const g = planGeruest(box, koepfe, f.vonStd, f.bisStd, spuren.length <= 3);
+
+  spuren.forEach((sp, i) => {
+    const spalte = g.spalten[i];
+
+    // Pausen als gesperrte Bänder
+    pausen.forEach((pz) => {
+      const b = el("div", "balken pause");
+      b.appendChild(el("b", null, t("kPause")));
+      setzeBalken(b, { ...pz, versatz: 0, anteil: 100 }, g);
       spalte.appendChild(b);
     });
 
-  belegteSlots.forEach((s) => {
-    const von = minuten(s.start);
-    if (sichtbar.has(von)) return;          // sehe ich schon im Klartext
-    const bis = von + (Number(s.dauer) || 60);
-    const b = el("div", "balken belegt");
-    b.appendChild(el("b", null, t("planVergeben")));
-    b.appendChild(el("small", null, ausMinuten(von) + "–" + ausMinuten(bis)));
-    setzeBalken(b, { von, bis, versatz: 0, anteil: 100 }, g);
-    spalte.appendChild(b);
+    // Freie und volle Zeitfenster dieser Terminart
+    if (sp.art) {
+      fenster.filter((x) => x.art === sp.art).forEach((x) => {
+        const meins = belegteSlots.some((y) =>
+          minuten(y.start) === x.von && y.uid === nutzer.uid);
+        if (meins) return;                       // steht gleich als Eintrag da
+        const frei = freiePlaetze(x, belegteSlots);
+        const b = el("button", "balken slot" + (frei ? "" : " voll"));
+        b.type = "button";
+        b.textContent = frei === 0 ? t("slVoll")
+          : (x.plaetze > 1 ? ausMinuten(x.von) + " · " + t("slPlaetze", { frei, alle: x.plaetze })
+                           : ausMinuten(x.von));
+        setzeBalken(b, { ...x, versatz: 0, anteil: 100 }, g);
+        if (frei > 0) b.addEventListener("click", () => buchen(k, tag, x));
+        else b.disabled = true;
+        spalte.appendChild(b);
+      });
+    }
+
+    // Die Einträge dieser Spur
+    const meine = sp.art
+      ? eintraege.filter((e) => e.artName === sp.art.name)
+      : rest;
+    verteile(meine.map((e) => ({ ...zeitraum(e), e }))
+                  .filter((x) => x.von !== undefined))
+      .forEach((x) => {
+        const b = eintragsBalken(x.e, tag, g, true);
+        setzeBalken(b, x, g);
+        spalte.appendChild(b);
+      });
+  });
+
+  // Was andere belegt haben, ohne dass ich den Inhalt sehe
+  const sichtbar = new Set(eintraege.map((e) => minuten(e.start)));
+  belegteSlots.forEach((x) => {
+    if (x.uid === nutzer.uid) return;
+    const von = minuten(x.start);
+    if (sichtbar.has(von)) return;
+    // zählt schon in "frei von alle", hier nicht noch einmal zeichnen
   });
 
   if (tag === heute()) jetztLinie(g);
-  rolleZu(g, tag === heute() ? jetztMinuten()
-            : (fenster.length ? fenster[0].von : null));
+  rolleZu(g, tag === heute() ? jetztMinuten() : (fenster.length ? fenster[0].von : null));
   if (!fenster.length && !eintraege.length) {
     box.appendChild(el("div", "leer", t("kZeitKeine")));
   }
+}
+
+function freiePlaetze(fenster, belegteSlots) {
+  const genommen = belegteSlots.filter((x) => minuten(x.start) === fenster.von).length;
+  return Math.max(0, fenster.plaetze - genommen);
 }
 
 function jetztLinie(g) {
@@ -1460,42 +1686,47 @@ function jetztLinie(g) {
   g.feld.appendChild(i);
 }
 
-/* ---------- Ein Zeitfenster nehmen ---------- */
+/* ---------- Ein Zeitfenster nehmen ----------
+   Bei mehreren Plätzen bekommt jeder Platz ein eigenes Dokument. Die App
+   probiert Platz 1, 2, 3 der Reihe nach. Anlegen gelingt nur, wenn der
+   Platz noch frei ist, das entscheidet die Datenbank. Dadurch können
+   nie mehr Leute auf einer Tour landen, als vorgesehen sind.           */
 
 async function buchen(k, tag, fenster) {
-  const art = (k.arten && k.arten[0]) || { name: k.name, dauer: fenster.bis - fenster.von };
-  const kennung = slotKennung(k.id, tag, fenster.von);
-  try {
-    // Anlegen gelingt nur, wenn es das Fenster noch nicht gibt.
-    // Das entscheidet die Datenbank, nicht die App.
-    await setDoc(doc(db, "slots", kennung), {
-      kreisId: k.id, datum: tag,
-      start: ausMinuten(fenster.von),
-      dauer: fenster.bis - fenster.von,
-      uid: nutzer.uid,
-      erstelltAm: serverTimestamp()
-    });
-  } catch (e) {
-    alert(t("slBelegt"));
-    return;
+  const art = fenster.art || { name: k.name, dauer: fenster.bis - fenster.von };
+  let kennung = null;
+
+  for (let platz = 1; platz <= fenster.plaetze; platz++) {
+    const versuch = slotKennung(k.id, tag, fenster.von, platz);
+    try {
+      await setDoc(doc(db, "slots", versuch), {
+        kreisId: k.id, datum: tag,
+        start: ausMinuten(fenster.von),
+        platz, dauer: fenster.bis - fenster.von,
+        artName: art.name || "",
+        uid: nutzer.uid, erstelltAm: serverTimestamp()
+      });
+      kennung = versuch;
+      break;
+    } catch (e) { /* Platz vergeben, nächsten versuchen */ }
   }
+
+  if (!kennung) { alert(t("slBelegt")); return; }
 
   try {
     const daten = {
-      ownerId: nutzer.uid,
-      typ: "termin",
+      ownerId: nutzer.uid, typ: "termin",
       titel: art.name || k.name,
+      artName: art.name || "",
       datum: tag,
       start: ausMinuten(fenster.von),
       ende:  ausMinuten(fenster.bis),
       dauer: fenster.bis - fenster.von,
       frist: "", ort: "", notiz: "",
       wiederholung: "einmal",
-      kreisIds: [k.id],
-      zugewiesen: [], zusagen: {},
+      kreisIds: [k.id], zugewiesen: [], zusagen: {},
       sichtbarFuer: sichtbarFuerListe([k.id], []),
-      slotId: kennung,
-      status: "",
+      slotId: kennung, status: "",
       suchtext: (art.name || k.name).toLowerCase(),
       erstelltAm: serverTimestamp()
     };
@@ -1670,12 +1901,16 @@ function maleAufgaben(box) {
 
   const ueberfaellig = offen.filter((e) => e.frist && e.frist < h)
     .sort((a, b) => a.frist.localeCompare(b.frist));
+  // Ohne Frist, aber der geplante Tag ist vorbei: das ist auch überfällig,
+  // nur eben anders. Früher fiel das unter "Ohne Frist" und ging unter.
+  const frueher = offen.filter((e) => !e.frist && e.datum < h)
+    .sort((a, b) => a.datum.localeCompare(b.datum));
   const heuteFaellig = offen.filter((e) => e.frist === h);
   const bald = offen.filter((e) => e.frist && e.frist > h && tageBis(e.frist, h) <= 7)
     .sort((a, b) => a.frist.localeCompare(b.frist));
   const spaeter = offen.filter((e) => e.frist && tageBis(e.frist, h) > 7)
     .sort((a, b) => a.frist.localeCompare(b.frist));
-  const ohneFrist = offen.filter((e) => !e.frist)
+  const ohneFrist = offen.filter((e) => !e.frist && e.datum >= h)
     .sort((a, b) => a.datum.localeCompare(b.datum));
 
   if (!offen.length && !serien.length && !fertig.length && !zugewiesen.length) {
@@ -1689,6 +1924,7 @@ function maleAufgaben(box) {
   };
   abschnitt("aZugewiesen", zugewiesen);
   abschnitt("aUeberfaellig", ueberfaellig, true);
+  abschnitt("aOffenFrueher", frueher, true);
   abschnitt("aHeuteFaellig", heuteFaellig, true);
   abschnitt("aDieseWoche", bald);
   if (serien.length) {
@@ -2015,6 +2251,7 @@ function zeigeArtenWahl() {
     b.appendChild(el("span", null, `${a.name} · ${a.dauer} min`));
     b.addEventListener("click", () => {
       $("fTitel").value = a.name;
+      gewaehlteArt = a.name;
       vorgabeDauer = Number(a.dauer) || 0;
       const s = minuten($("fStart").value);
       if (s !== null && vorgabeDauer) $("fEnde").value = ausMinuten(s + vorgabeDauer);
@@ -2056,6 +2293,7 @@ function oeffneEintrag(e, tag) {
   bearbeiteId = e ? e.id : null;
   bearbeiteTag = tag || anker;
   vorgabeDauer = e ? (Number(e.dauer) || 0) : 0;
+  gewaehlteArt = e ? (e.artName || "") : "";
   $("dlgTitel").textContent = e ? t("fBearbeiten") : t("fNeu");
   $("dlgUnter").textContent = e ? (istSerie(e) ? t("fSerieHinweis") : "") : t("fWasSteht");
 
@@ -2160,6 +2398,7 @@ $("formEintrag").addEventListener("submit", async (ev) => {
     dauer: dauer > 0 ? dauer : 0,
     frist: typ === "task" ? (frist || "") : "",
     ort, notiz, wiederholung, kreisIds, zugewiesen, zusagen,
+    artName: gewaehlteArt || "",
     sichtbarFuer: sichtbarFuerListe(kreisIds, zugewiesen),
     suchtext: [titel, notiz, ort].join(" ").toLowerCase().trim()
   };
@@ -2263,15 +2502,8 @@ function setzeArt(a) {
   $("artKreis").classList.toggle("an", a === "kreis");
   $("artStern").classList.toggle("an", a === "stern");
 }
-function setzeBelegung(b) {
-  neueBelegung = b;
-  $("belParallel").classList.toggle("an", b === "parallel");
-  $("belExklusiv").classList.toggle("an", b === "exklusiv");
-}
 $("artKreis").addEventListener("click", () => setzeArt("kreis"));
 $("artStern").addEventListener("click", () => setzeArt("stern"));
-$("belParallel").addEventListener("click", () => setzeBelegung("parallel"));
-$("belExklusiv").addEventListener("click", () => setzeBelegung("exklusiv"));
 
 $("kreiseBtn").addEventListener("click", () => { zeigeKreise(); $("dlgKreise").showModal(); });
 $("kreiseZu").addEventListener("click", () => $("dlgKreise").close());
@@ -2280,7 +2512,6 @@ $("orbitNeuBtn").addEventListener("click", () => {
   $("kName").value = "";
   $("kreisFehler").textContent = "";
   setzeArt("kreis");
-  setzeBelegung("parallel");
   $("dlgOrbitNeu").showModal();
 });
 
@@ -2307,9 +2538,7 @@ function zeigeKreise() {
     p.style.width = "14px"; p.style.height = "14px";
     kopf.appendChild(p);
     kopf.appendChild(el("b", null, k.name));
-    kopf.appendChild(el("span", "rolle",
-      (stern ? t("kArtStern") : t("kArtKreis")) + " · " +
-      (istExklusiv(k) ? t("kExklusiv") : t("kParallel"))));
+    kopf.appendChild(el("span", "rolle", stern ? t("kArtStern") : t("kArtKreis")));
 
     if (verwalter) {
       const eb = el("button", "klein", t("kEinstellungen"));
@@ -2455,8 +2684,8 @@ $("formOrbitNeu").addEventListener("submit", async (ev) => {
   if (!name) { $("kreisFehler").textContent = t("kNameFehlt"); return; }
   try {
     await addDoc(collection(db, "kreise"), {
-      name, farbe: neueFarbe, art: neueArt, belegung: neueBelegung,
-      arten: [], zeiten: [],
+      name, farbe: neueFarbe, art: neueArt,
+      arten: [], zeiten: [], pausen: [],
       erstellerId: nutzer.uid,
       mitglieder: [nutzer.uid], verwalter: [nutzer.uid],
       info: { [nutzer.uid]: meinSteckbrief() },
@@ -2471,55 +2700,65 @@ $("formOrbitNeu").addEventListener("submit", async (ev) => {
 
 /* ---------- Kreis einstellen ---------- */
 
-function baueZeitTage() {
-  const box = $("eZeitTage");
+function tageWahlIn(id, speicher) {
+  const box = $(id);
   if (!box) return;
   box.innerHTML = "";
   liste("kurzTage").forEach((name, i) => {
-    const b = el("button", "tagKnopf" + (einstTage.includes(i) ? " an" : ""), name);
+    const b = el("button", "tagKnopf" + (speicher.includes(i) ? " an" : ""), name);
     b.type = "button"; b.dataset.tag = i;
     b.addEventListener("click", () => {
-      const k = einstTage.indexOf(i);
-      if (k >= 0) einstTage.splice(k, 1); else einstTage.push(i);
+      const k = speicher.indexOf(i);
+      if (k >= 0) speicher.splice(k, 1); else speicher.push(i);
       b.classList.toggle("an", k < 0);
     });
     box.appendChild(b);
   });
 }
+function baueZeitTage() {
+  tageWahlIn("eZeitTage", einstTage);
+  tageWahlIn("eArtTage", einstArtTage);
+  tageWahlIn("ePauseTage", einstPauseTage);
+}
 
 function oeffneEinstellungen(k) {
   einstKreis = k;
-  einstArten = (k.arten || []).map((a) => ({ ...a }));
+  einstArten = (k.arten || []).map((a) => ({ ...a, tage: [...(a.tage || [])] }));
   einstZeiten = (k.zeiten || []).map((z) => ({ ...z, tage: [...(z.tage || [])] }));
-  einstBelegung = istExklusiv(k) ? "exklusiv" : "parallel";
+  einstPausen = (k.pausen || []).map((z) => ({ ...z, tage: [...(z.tage || [])] }));
   einstTage = [0, 1, 2, 3, 4];
+  einstArtTage = [0, 1, 2, 3, 4];
+  einstPauseTage = [0, 1, 2, 3, 4];
   $("einstUnter").textContent = k.name;
   $("einstFehler").textContent = "";
   $("einstGut").textContent = "";
-  setzeEinstBelegung(einstBelegung);
   baueZeitTage();
   zeigeArtenListe();
   zeigeZeitenListe();
+  zeigePausenListe();
   $("dlgKreisEinst").showModal();
 }
-function setzeEinstBelegung(b) {
-  einstBelegung = b;
-  $("eBelParallel").classList.toggle("an", b === "parallel");
-  $("eBelExklusiv").classList.toggle("an", b === "exklusiv");
-}
-$("eBelParallel").addEventListener("click", () => setzeEinstBelegung("parallel"));
-$("eBelExklusiv").addEventListener("click", () => setzeEinstBelegung("exklusiv"));
 $("einstZu").addEventListener("click", () => $("dlgKreisEinst").close());
+
+function plaetzeText(a) {
+  const p = Number(a.plaetze);
+  if (!(p >= 1)) return t("kArtFrei");
+  return p === 1 ? t("kArtEinPlatz") : t("kArtPlaetzeN", { n: p });
+}
 
 function zeigeArtenListe() {
   const box = $("artenListe");
   box.innerHTML = "";
   if (!einstArten.length) { box.appendChild(el("div", "hinweis", t("kArtKeine"))); return; }
+  const K = liste("kurzTage");
   einstArten.forEach((a, i) => {
     const z = el("div", "zeile2");
     const w = el("div", "wachs");
     w.appendChild(el("div", null, a.name));
-    w.appendChild(el("small", null, a.dauer + " min"));
+    const tage = (a.tage || []).map((x) => K[x]).join(", ");
+    w.appendChild(el("small", null, tage
+      ? t("kArtEinZeile", { tage, von: a.von, bis: a.bis, dauer: a.dauer, plaetze: plaetzeText(a) })
+      : a.dauer + " min · " + plaetzeText(a)));
     z.appendChild(w);
     const wb = el("button", "klein gefahr", "×");
     wb.type = "button";
@@ -2528,14 +2767,54 @@ function zeigeArtenListe() {
     box.appendChild(z);
   });
 }
+
 $("artHinzu").addEventListener("click", () => {
   const name = $("eArtName").value.trim();
   const dauer = Number($("eArtDauer").value);
+  const von = $("eArtVon").value, bis = $("eArtBis").value;
+  const plaetze = Number($("eArtPlaetze").value) || 0;
   if (!name || !(dauer > 0)) { $("einstFehler").textContent = t("kDauerFehlt"); return; }
+  // Plätze nur sinnvoll, wenn auch Tage und Zeit feststehen
+  if (plaetze >= 1 && (!einstArtTage.length || !von || !bis || bis <= von)) {
+    $("einstFehler").textContent = t("kArtTageFehlt"); return;
+  }
   $("einstFehler").textContent = "";
-  einstArten.push({ name, dauer });
+  einstArten.push({
+    name, dauer, plaetze,
+    tage: plaetze >= 1 ? [...einstArtTage].sort((a, b) => a - b) : [],
+    von: plaetze >= 1 ? von : "",
+    bis: plaetze >= 1 ? bis : ""
+  });
   $("eArtName").value = "";
   zeigeArtenListe();
+});
+
+function zeigePausenListe() {
+  const box = $("pausenListe");
+  box.innerHTML = "";
+  if (!einstPausen.length) { box.appendChild(el("div", "hinweis", t("kPauseKeine"))); return; }
+  const K = liste("kurzTage");
+  einstPausen.forEach((pz, i) => {
+    const z = el("div", "zeile2");
+    const w = el("div", "wachs");
+    w.appendChild(el("div", null, (pz.tage || []).map((x) => K[x]).join(", ")));
+    w.appendChild(el("small", null, pz.von + " – " + pz.bis));
+    z.appendChild(w);
+    const wb = el("button", "klein gefahr", "×");
+    wb.type = "button";
+    wb.addEventListener("click", () => { einstPausen.splice(i, 1); zeigePausenListe(); });
+    z.appendChild(wb);
+    box.appendChild(z);
+  });
+}
+$("pauseHinzu").addEventListener("click", () => {
+  const von = $("ePauseVon").value, bis = $("ePauseBis").value;
+  if (!einstPauseTage.length || !von || !bis || bis <= von) {
+    $("einstFehler").textContent = t("kZeitFehlt"); return;
+  }
+  $("einstFehler").textContent = "";
+  einstPausen.push({ tage: [...einstPauseTage].sort((a, b) => a - b), von, bis });
+  zeigePausenListe();
 });
 
 function zeigeZeitenListe() {
@@ -2571,9 +2850,9 @@ $("einstSpeichern").addEventListener("click", async () => {
   $("einstFehler").textContent = "";
   try {
     await updateDoc(doc(db, "kreise", einstKreis.id), {
-      belegung: einstBelegung,
       arten: einstArten,
-      zeiten: einstZeiten
+      zeiten: einstZeiten,
+      pausen: einstPausen
     });
     $("einstGut").textContent = t("kGespeichert");
     setTimeout(() => $("dlgKreisEinst").close(), 700);
@@ -3198,8 +3477,7 @@ async function ladeBetrieb() {
         const txt = el("div");
         txt.style.flexGrow = "1";
         txt.appendChild(el("div", null, k.name + " · " +
-          (istStern(k) ? t("kArtStern") : t("kArtKreis")) + " · " +
-          (istExklusiv(k) ? t("kExklusiv") : t("kParallel"))));
+          (istStern(k) ? t("kArtStern") : t("kArtKreis"))));
         txt.appendChild(el("div", "mail", (k.mitglieder || []).length + " " + t("bPersonen")));
         z.appendChild(txt);
         const warte = (offeneEinladungen[k.id] || []).length;
