@@ -3063,6 +3063,7 @@ function oeffneEinstellungen(k) {
   $("einstGut").textContent = "";
   baueZeitTage();
   setzeArtModus("fest");
+  ["artMeldung", "pauseMeldung", "zeitMeldung"].forEach((x) => blockMeldung(x, ""));
   zeigeArtenListe();
   zeigeZeitenListe();
   zeigePausenListe();
@@ -3095,6 +3096,28 @@ function modusText(a) {
   return t("kModusFest");
 }
 
+/* Kurze Rückmeldung direkt unter dem Knopf, der sie ausgelöst hat */
+function blockMeldung(id, text, gut) {
+  const b = $(id);
+  if (!b) return;
+  b.textContent = text || "";
+  b.classList.toggle("gut", !!gut);
+  if (text) b.scrollIntoView({ block: "nearest" });
+}
+
+/* Bekommt diese Terminart in der nächsten Woche überhaupt ein Fenster?
+   Wenn eine Art über ihr dieselbe Zeit schon genommen hat, bleibt für
+   sie nichts übrig. Dann steht sie zwar in der Liste, taucht im Plan
+   aber nie auf. Das soll man hier sehen, nicht erst nächste Woche. */
+function artBekommtZeit(a) {
+  const probe = { id: "probe", arten: einstArten, zeiten: einstZeiten, pausen: einstPausen };
+  for (let i = 0; i < 7; i++) {
+    const tag = plus(heute(), i);
+    if (fensterFuer(probe, tag).some((x) => x.art === a)) return true;
+  }
+  return false;
+}
+
 function zeigeArtenListe() {
   const box = $("artenListe");
   box.innerHTML = "";
@@ -3108,6 +3131,9 @@ function zeigeArtenListe() {
     w.appendChild(el("small", null, artModus(a) === "rest"
       ? t("kModusRest") + " · " + dauerText(Number(a.dauer) || 60) + " · " + plaetzeText(a)
       : t("kArtEinZeile", { tage, von: a.von, bis: a.bis, dauer: a.dauer, plaetze: plaetzeText(a) })));
+    if (plaetzeVon(einstKreis || {}, a) >= 1 && !artBekommtZeit(a)) {
+      w.appendChild(el("span", "artWarn", t("kArtOhneZeit")));
+    }
     z.appendChild(w);
 
     /* Die Reihenfolge entscheidet, wer sich zuerst bedient.
@@ -3135,16 +3161,20 @@ $("artHinzu").addEventListener("click", () => {
   const von = $("eArtVon").value, bis = $("eArtBis").value;
   const plaetze = Number($("eArtPlaetze").value) || 0;
   const fest = einstModus === "fest";
-  if (!name || !(dauer > 0)) { $("einstFehler").textContent = t("kDauerFehlt"); return; }
+  if (!name) { blockMeldung("artMeldung", t("kArtNameFehlt")); return; }
+  if (!(dauer > 0)) { blockMeldung("artMeldung", t("kDauerFehlt")); return; }
   // Feste Zeiten heißt: Tage und Uhrzeit müssen auch dastehen
   if (fest && plaetze >= 1 && (!einstArtTage.length || !von || !bis || bis <= von)) {
-    $("einstFehler").textContent = t("kArtTageFehlt"); return;
+    blockMeldung("artMeldung", t("kArtTageFehlt")); return;
   }
   // "Der Rest" rechnet von der Arbeitszeit ab. Ohne die gibt es keinen Rest.
   if (!fest && !einstZeiten.length) {
-    $("einstFehler").textContent = t("kRahmenFehlt"); return;
+    blockMeldung("artMeldung", t("kRahmenFehlt")); return;
   }
-  $("einstFehler").textContent = "";
+  if (einstArten.some((a) => (a.name || "").toLowerCase() === name.toLowerCase())) {
+    blockMeldung("artMeldung", t("kArtNameDoppelt")); return;
+  }
+  blockMeldung("artMeldung", "");
   einstArten.push({
     name, dauer, plaetze,
     modus: fest ? "fest" : "rest",
@@ -3154,6 +3184,7 @@ $("artHinzu").addEventListener("click", () => {
   });
   $("eArtName").value = "";
   zeigeArtenListe();
+  blockMeldung("artMeldung", t("kArtDazu", { name }), true);
 });
 
 function zeigePausenListe() {
@@ -3169,7 +3200,8 @@ function zeigePausenListe() {
     z.appendChild(w);
     const wb = el("button", "klein gefahr", "×");
     wb.type = "button";
-    wb.addEventListener("click", () => { einstPausen.splice(i, 1); zeigePausenListe(); });
+    wb.addEventListener("click", () => {
+      einstPausen.splice(i, 1); zeigePausenListe(); zeigeArtenListe(); });
     z.appendChild(wb);
     box.appendChild(z);
   });
@@ -3177,11 +3209,12 @@ function zeigePausenListe() {
 $("pauseHinzu").addEventListener("click", () => {
   const von = $("ePauseVon").value, bis = $("ePauseBis").value;
   if (!einstPauseTage.length || !von || !bis || bis <= von) {
-    $("einstFehler").textContent = t("kZeitFehlt"); return;
+    blockMeldung("pauseMeldung", t("kZeitFehlt")); return;
   }
-  $("einstFehler").textContent = "";
   einstPausen.push({ tage: [...einstPauseTage].sort((a, b) => a - b), von, bis });
   zeigePausenListe();
+  zeigeArtenListe();                     // die Warnungen stimmen jetzt anders
+  blockMeldung("pauseMeldung", t("kPauseDazu"), true);
 });
 
 function zeigeZeitenListe() {
@@ -3197,7 +3230,8 @@ function zeigeZeitenListe() {
     z.appendChild(w);
     const wb = el("button", "klein gefahr", "×");
     wb.type = "button";
-    wb.addEventListener("click", () => { einstZeiten.splice(i, 1); zeigeZeitenListe(); });
+    wb.addEventListener("click", () => {
+      einstZeiten.splice(i, 1); zeigeZeitenListe(); zeigeArtenListe(); });
     z.appendChild(wb);
     box.appendChild(z);
   });
@@ -3205,11 +3239,12 @@ function zeigeZeitenListe() {
 $("zeitHinzu").addEventListener("click", () => {
   const von = $("eZeitVon").value, bis = $("eZeitBis").value;
   if (!einstTage.length || !von || !bis || bis <= von) {
-    $("einstFehler").textContent = t("kZeitFehlt"); return;
+    blockMeldung("zeitMeldung", t("kZeitFehlt")); return;
   }
-  $("einstFehler").textContent = "";
   einstZeiten.push({ tage: [...einstTage].sort((a, b) => a - b), von, bis });
   zeigeZeitenListe();
+  zeigeArtenListe();                     // „Der Rest" hat jetzt etwas zu nehmen
+  blockMeldung("zeitMeldung", t("kZeitDazu"), true);
 });
 
 $("einstSpeichern").addEventListener("click", async () => {
