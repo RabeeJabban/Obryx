@@ -357,6 +357,14 @@ main {
   display: flex; align-items: center; justify-content: center; font-weight: 600;
 }
 .balken.slot:hover, .balken.slot:active { border-color: var(--gruen); color: var(--gruen); }
+.balken.slot.voll { border-style: solid; opacity: .5; }
+.balken.pause {
+  background: repeating-linear-gradient(135deg,
+    var(--flaeche2), var(--flaeche2) 5px, transparent 5px, transparent 10px);
+  color: var(--text3); border: 1px dashed var(--linie2);
+  display: flex; align-items: center; justify-content: center; font-size: 11px;
+}
+.balken.pause b { font-weight: 600; }
 
 .ohneZeit { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
 .chip {
@@ -368,6 +376,76 @@ main {
 .chip small { color: var(--text3); font-size: 11.5px; white-space: nowrap; }
 .chip.erledigt small { text-decoration: none; }
 .chip.erledigt { color: var(--text3); text-decoration: line-through; }
+
+/* ===================================================================
+   SCHREIBTISCH
+   Am Handy bleibt alles eine Spalte. Ab 1024 Pixeln kommt links eine
+   Leiste dazu, und der Plan bekommt die ganze Breite. Eine Web-App
+   darf auf einem großen Bildschirm nicht wie ein Handy aussehen.
+   =================================================================== */
+.rahmen { max-width: 1100px; margin: 0 auto; }
+.seite { display: none; }
+
+@media (min-width: 1024px) {
+  .rahmen {
+    display: grid; grid-template-columns: 252px minmax(0, 1fr);
+    gap: 20px; padding: 14px 20px 0; max-width: 1560px; align-items: start;
+  }
+  .seite { display: block; position: sticky; top: 70px; }
+  .haupt { min-width: 0; }
+  nav.ansichten, .filter, .zeitleiste, .suchleiste, main { max-width: none; padding-inline: 0; }
+  nav.ansichten button { flex: 0 0 auto; padding: 7px 18px; }
+  .filter { max-width: 560px; }
+  main { padding-bottom: 40px; }
+  .planRolle { max-height: calc(100dvh - 250px); }
+  .kreisWahl { display: none; }        /* steht links in der Leiste */
+  .plus { inset-inline-end: 28px; bottom: 28px; }
+  dialog { max-width: 620px; }
+}
+@media (min-width: 1440px) {
+  .rahmen { grid-template-columns: 272px minmax(0, 1fr); }
+}
+
+.seiteBlock {
+  background: var(--flaeche); border: 1px solid var(--linie);
+  border-radius: var(--rund); padding: 12px; margin-bottom: 12px;
+}
+.seiteBlock label { margin-top: 0; }
+.miniKopf { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.miniKopf b { flex-grow: 1; text-align: center; font-size: 14px; }
+.pfeil.klein2 { width: 26px; height: 26px; font-size: 15px; border-radius: 8px; }
+.miniGitter { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.miniGitter .wt { font-size: 10px; color: var(--text3); text-align: center; font-weight: 700; }
+.miniTag {
+  aspect-ratio: 1/1; border: 0; background: none; border-radius: 7px; padding: 0;
+  font-size: 12px; color: var(--text); position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.miniTag.fremd { color: var(--text3); opacity: .45; }
+.miniTag.heute { background: var(--akzentHell); color: var(--akzent); font-weight: 700; }
+.miniTag.gewaehlt { outline: 2px solid var(--akzent); }
+.miniTag.feier { background: var(--gruenHell); }
+.miniTag.ferien { box-shadow: inset 0 -2px 0 var(--k4); }
+.miniTag .pp { display: flex; gap: 1px; height: 3px; margin-top: 1px; }
+.miniTag .pp i { width: 3px; height: 3px; border-radius: 50%; background: var(--akzent); }
+
+.seiteOrbits { display: flex; flex-direction: column; gap: 5px; }
+.seiteOrbits button {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: start;
+  padding: 7px 10px; border-radius: 9px; border: 1px solid transparent;
+  background: none; color: var(--text); font-size: 13px; font-weight: 600;
+}
+.seiteOrbits button.an { background: var(--akzentHell); border-color: var(--akzent); color: var(--akzent); }
+.seiteOffenZeile {
+  display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 13px;
+  border-top: 1px solid var(--linie);
+}
+.seiteOffenZeile:first-child { border-top: 0; }
+.seiteOffenZeile span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.seiteOffenZeile small { margin-inline-start: auto; color: var(--rot); font-size: 11px; white-space: nowrap; }
+.legende { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--text2); }
+.legende span { display: flex; align-items: center; gap: 7px; }
+.legende i { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
 
 /* ---------- Liste und Aufgaben behalten die Zeilen ---------- */
 .eintrag {
@@ -678,6 +756,31 @@ td.n { color: var(--text2); white-space: nowrap; }
     <button class="rundknopf" id="michBtn" data-i18n-al="konto"><img id="photo" alt=""></button>
   </header>
 
+  <div class="rahmen">
+  <aside class="seite" id="seite">
+    <div class="seiteBlock">
+      <div class="miniKopf">
+        <button type="button" class="pfeil klein2" id="miniZurueck">&#8249;</button>
+        <b id="miniTitel"></b>
+        <button type="button" class="pfeil klein2" id="miniVor">&#8250;</button>
+      </div>
+      <div class="miniGitter" id="miniGitter"></div>
+    </div>
+    <div class="seiteBlock">
+      <label data-i18n="kTitel"></label>
+      <div class="seiteOrbits" id="seiteOrbits"></div>
+    </div>
+    <div class="seiteBlock" id="seiteOffenBlock">
+      <label data-i18n="dsOffen"></label>
+      <div id="seiteOffen"></div>
+    </div>
+    <div class="seiteBlock legende">
+      <span><i style="background:var(--gruen)"></i><span data-i18n="lgFeiertag"></span></span>
+      <span><i style="background:var(--k4)"></i><span data-i18n="lgFerien"></span></span>
+    </div>
+  </aside>
+
+  <div class="haupt">
   <nav class="ansichten" id="nav">
     <button data-v="tag" class="an" data-i18n="vTag"></button>
     <button data-v="woche" data-i18n="vWoche"></button>
@@ -701,6 +804,8 @@ td.n { color: var(--text2); white-space: nowrap; }
   </div>
 
   <main id="buehne"></main>
+  </div>
+  </div>
 
   <button class="plus" id="neuBtn" data-i18n-al="neuerEintrag">+</button>
 </div>
@@ -826,13 +931,6 @@ td.n { color: var(--text2); white-space: nowrap; }
     </div>
     <p class="hinweis" data-i18n="kArtHinweis"></p>
 
-    <label data-i18n="kBelegung"></label>
-    <div class="wahl">
-      <button type="button" id="belParallel" class="an" data-i18n="kParallel"></button>
-      <button type="button" id="belExklusiv" data-i18n="kExklusiv"></button>
-    </div>
-    <p class="hinweis" data-i18n="kBelegungHinweis"></p>
-
     <label data-i18n="kFarbe"></label>
     <div class="farbwahl" id="kFarben"></div>
 
@@ -850,17 +948,11 @@ td.n { color: var(--text2); white-space: nowrap; }
     <h2 data-i18n="kEinstellungen"></h2>
     <p class="dlgUnter" id="einstUnter"></p>
 
-    <label data-i18n="kBelegung"></label>
-    <div class="wahl">
-      <button type="button" id="eBelParallel" data-i18n="kParallel"></button>
-      <button type="button" id="eBelExklusiv" data-i18n="kExklusiv"></button>
-    </div>
-    <p class="hinweis" data-i18n="kBelegungHinweis"></p>
-
     <div class="block">
       <label data-i18n="kArten"></label>
       <div id="artenListe"></div>
-      <div class="reihe" style="margin-top:8px">
+
+      <div class="reihe" style="margin-top:10px">
         <div style="flex:2">
           <label for="eArtName" data-i18n="kArtName"></label>
           <input type="text" id="eArtName" maxlength="30" data-i18n-ph="kArtNameBsp">
@@ -870,8 +962,36 @@ td.n { color: var(--text2); white-space: nowrap; }
           <input type="number" id="eArtDauer" min="5" max="600" step="5" value="45">
         </div>
       </div>
+
+      <label data-i18n="kArtTage"></label>
+      <div class="tageWahl" id="eArtTage"></div>
+
+      <div class="reihe" style="margin-top:8px">
+        <div><label for="eArtVon" data-i18n="fVon"></label>
+             <input type="time" id="eArtVon" value="17:00"></div>
+        <div><label for="eArtBis" data-i18n="fBis"></label>
+             <input type="time" id="eArtBis" value="22:00"></div>
+        <div><label for="eArtPlaetze" data-i18n="kArtPlaetze"></label>
+             <input type="number" id="eArtPlaetze" min="0" max="99" step="1" value="1"></div>
+      </div>
+      <p class="hinweis" data-i18n="kArtPlaetzeHinweis"></p>
+
       <button type="button" class="klein" id="artHinzu" style="margin-top:8px" data-i18n="kArtHinzu"></button>
       <p class="hinweis" data-i18n="kArtenHinweis"></p>
+    </div>
+
+    <div class="block">
+      <label data-i18n="kPausen"></label>
+      <div id="pausenListe"></div>
+      <div class="tageWahl" id="ePauseTage" style="margin-top:8px"></div>
+      <div class="reihe" style="margin-top:8px">
+        <div><label for="ePauseVon" data-i18n="fVon"></label>
+             <input type="time" id="ePauseVon" value="19:00"></div>
+        <div><label for="ePauseBis" data-i18n="fBis"></label>
+             <input type="time" id="ePauseBis" value="19:30"></div>
+      </div>
+      <button type="button" class="klein" id="pauseHinzu" style="margin-top:8px" data-i18n="kPauseHinzu"></button>
+      <p class="hinweis" data-i18n="kPausenHinweis"></p>
     </div>
 
     <div class="block">
