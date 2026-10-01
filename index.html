@@ -595,6 +595,24 @@ main {
   background: var(--akzent); color: #fff; font-size: 26px; line-height: 1;
   box-shadow: var(--schatten2);
 }
+/* Kurze Rückmeldung unten. Verschwindet von selbst. */
+.melder {
+  position: fixed; z-index: 60; inset-inline-start: 16px;
+  bottom: calc(18px + var(--unten)); max-width: min(420px, calc(100% - 90px));
+  background: var(--text); color: var(--flaeche); border-radius: var(--rund);
+  padding: 11px 15px; font-size: 13.5px; font-weight: 600;
+  box-shadow: var(--schatten2);
+}
+/* Die eigene Zeit von außerhalb liegt hinter dem Gruppenplan:
+   sichtbar genug zum Merken, leise genug zum Übersehen. */
+.balken.belegt.blass { opacity: .42; }
+.balken.slot, .balken:not(.hinten) { z-index: 1; }
+.balken.hinten { z-index: 0; }
+/* Schlanke Fassung für reine Buchende: kein Filter, keine offenen
+   Aufgaben, keine Reiterleiste. Nur die Gruppe und ihre freien Zeiten. */
+body.schlank #filter,
+body.schlank #seiteOffenBlock,
+body.schlank nav.ansichten { display: none; }
 dialog {
   border: 0; padding: 0; background: var(--flaeche); color: var(--text);
   width: 100%; max-width: 540px; max-height: 92dvh;
@@ -815,6 +833,7 @@ td.n { color: var(--text2); white-space: nowrap; }
   </div>
 
   <button class="plus" id="neuBtn" data-i18n-al="neuerEintrag">+</button>
+  <div class="melder versteckt" id="melder" role="status"></div>
 </div>
 
 <!-- =============== NAME BEIM ERSTEN MAL =============== -->
@@ -1060,6 +1079,21 @@ td.n { color: var(--text2); white-space: nowrap; }
 </dialog>
 
 <!-- =============== FREIE ZEITEN SUCHEN =============== -->
+<!-- =============== ZEITFENSTER ZUTEILEN =============== -->
+<dialog id="dlgZuteilen">
+  <div class="dlgInhalt">
+    <h2 data-i18n="zuTitel"></h2>
+    <p class="dlgUnter" id="zuUnter"></p>
+    <label data-i18n="zuWer"></label>
+    <div class="personen" id="zuLeute"></div>
+    <div id="zuFehler" class="fehler"></div>
+    <div class="aktionen">
+      <button type="button" class="knopf hell" id="zuAb" data-i18n="abbrechen"></button>
+      <button type="button" class="knopf" id="zuSelbst" data-i18n="zuSelbst"></button>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="dlgSuchen">
   <div class="dlgInhalt">
     <h2 data-i18n="suTitel"></h2>
