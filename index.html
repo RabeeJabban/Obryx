@@ -526,7 +526,10 @@ main {
   display: flex; align-items: center; gap: 12px;
   background: var(--gruenHell); border-radius: var(--rund); padding: 12px 14px;
 }
-.luecke b { font-variant-numeric: tabular-nums; color: var(--gruen); direction: ltr; }
+/* direction allein wirkt auf einem inline-Element nicht: ohne unicode-bidi
+   bleibt "06:00 – 11:00" im Arabischen verdreht. Deshalb isolate. */
+.luecke b { font-variant-numeric: tabular-nums; color: var(--gruen);
+            direction: ltr; unicode-bidi: isolate; }
 .luecke .dauer { font-size: 13px; color: var(--text2); flex-grow: 1; }
 
 /* ---------- Kreise ---------- */
@@ -641,6 +644,10 @@ textarea { resize: vertical; min-height: 62px; }
 .aktionen { display: flex; gap: 9px; margin-top: 22px; flex-wrap: wrap; }
 .aktionen .knopf { flex: 1; min-width: 120px; }
 .block { border-top: 1px solid var(--linie); margin-top: 18px; padding-top: 6px; }
+/* Die drei Schritte beim Einrichten. Die Reihenfolge ist keine Deko:
+   ohne Arbeitszeit weiss eine Terminart nicht, wovon sie den Rest nimmt. */
+.schrittNr { font-size: 11px; font-weight: 800; letter-spacing: .09em;
+             text-transform: uppercase; color: var(--k0); margin: 8px 0 2px; }
 
 .zeile2 {
   display: flex; align-items: center; gap: 9px; padding: 8px 0;
@@ -949,38 +956,22 @@ td.n { color: var(--text2); white-space: nowrap; }
     <p class="dlgUnter" id="einstUnter"></p>
 
     <div class="block">
-      <label data-i18n="kArten"></label>
-      <div id="artenListe"></div>
-
-      <div class="reihe" style="margin-top:10px">
-        <div style="flex:2">
-          <label for="eArtName" data-i18n="kArtName"></label>
-          <input type="text" id="eArtName" maxlength="30" data-i18n-ph="kArtNameBsp">
-        </div>
-        <div style="flex:1">
-          <label for="eArtDauer" data-i18n="kArtDauer"></label>
-          <input type="number" id="eArtDauer" min="5" max="600" step="5" value="45">
-        </div>
-      </div>
-
-      <label data-i18n="kArtTage"></label>
-      <div class="tageWahl" id="eArtTage"></div>
-
+      <p class="schrittNr" data-i18n="kSchritt1"></p>
+      <label data-i18n="kZeiten"></label>
+      <div id="zeitenListe"></div>
+      <div class="tageWahl" id="eZeitTage" style="margin-top:8px"></div>
       <div class="reihe" style="margin-top:8px">
-        <div><label for="eArtVon" data-i18n="fVon"></label>
-             <input type="time" id="eArtVon" value="17:00"></div>
-        <div><label for="eArtBis" data-i18n="fBis"></label>
-             <input type="time" id="eArtBis" value="22:00"></div>
-        <div><label for="eArtPlaetze" data-i18n="kArtPlaetze"></label>
-             <input type="number" id="eArtPlaetze" min="0" max="99" step="1" value="1"></div>
+        <div><label for="eZeitVon" data-i18n="fVon"></label>
+             <input type="time" id="eZeitVon" value="17:00"></div>
+        <div><label for="eZeitBis" data-i18n="fBis"></label>
+             <input type="time" id="eZeitBis" value="22:00"></div>
       </div>
-      <p class="hinweis" data-i18n="kArtPlaetzeHinweis"></p>
-
-      <button type="button" class="klein" id="artHinzu" style="margin-top:8px" data-i18n="kArtHinzu"></button>
-      <p class="hinweis" data-i18n="kArtenHinweis"></p>
+      <button type="button" class="klein" id="zeitHinzu" style="margin-top:8px" data-i18n="kZeitHinzu"></button>
+      <p class="hinweis" data-i18n="kZeitenHinweis"></p>
     </div>
 
     <div class="block">
+      <p class="schrittNr" data-i18n="kSchritt2"></p>
       <label data-i18n="kPausen"></label>
       <div id="pausenListe"></div>
       <div class="tageWahl" id="ePauseTage" style="margin-top:8px"></div>
@@ -995,17 +986,45 @@ td.n { color: var(--text2); white-space: nowrap; }
     </div>
 
     <div class="block">
-      <label data-i18n="kZeiten"></label>
-      <div id="zeitenListe"></div>
-      <div class="tageWahl" id="eZeitTage" style="margin-top:8px"></div>
-      <div class="reihe" style="margin-top:8px">
-        <div><label for="eZeitVon" data-i18n="fVon"></label>
-             <input type="time" id="eZeitVon" value="17:00"></div>
-        <div><label for="eZeitBis" data-i18n="fBis"></label>
-             <input type="time" id="eZeitBis" value="22:00"></div>
+      <p class="schrittNr" data-i18n="kSchritt3"></p>
+      <label data-i18n="kArten"></label>
+      <div id="artenListe"></div>
+
+      <div class="reihe" style="margin-top:10px">
+        <div style="flex:2">
+          <label for="eArtName" data-i18n="kArtName"></label>
+          <input type="text" id="eArtName" maxlength="30" data-i18n-ph="kArtNameBsp">
+        </div>
+        <div style="flex:1">
+          <label for="eArtDauer" data-i18n="kArtDauer"></label>
+          <input type="number" id="eArtDauer" min="5" max="600" step="5" value="45">
+        </div>
       </div>
-      <button type="button" class="klein" id="zeitHinzu" style="margin-top:8px" data-i18n="kZeitHinzu"></button>
-      <p class="hinweis" data-i18n="kZeitenHinweis"></p>
+
+      <label data-i18n="kModus"></label>
+      <div class="wahl">
+        <button type="button" id="eModusFest" class="an" data-i18n="kModusFest"></button>
+        <button type="button" id="eModusRest" data-i18n="kModusRest"></button>
+      </div>
+      <p class="hinweis" data-i18n="kModusHinweis"></p>
+
+      <div id="eArtZeitFeld">
+        <label data-i18n="kArtTage"></label>
+        <div class="tageWahl" id="eArtTage"></div>
+        <div class="reihe" style="margin-top:8px">
+          <div><label for="eArtVon" data-i18n="fVon"></label>
+               <input type="time" id="eArtVon" value="17:00"></div>
+          <div><label for="eArtBis" data-i18n="fBis"></label>
+               <input type="time" id="eArtBis" value="22:00"></div>
+        </div>
+      </div>
+
+      <label for="eArtPlaetze" data-i18n="kArtPlaetze"></label>
+      <input type="number" id="eArtPlaetze" min="0" max="99" step="1" value="1">
+      <p class="hinweis" data-i18n="kArtPlaetzeHinweis"></p>
+
+      <button type="button" class="klein" id="artHinzu" style="margin-top:8px" data-i18n="kArtHinzu"></button>
+      <p class="hinweis" data-i18n="kArtenHinweis"></p>
     </div>
 
     <div id="einstFehler" class="fehler"></div>
@@ -1038,6 +1057,34 @@ td.n { color: var(--text2); white-space: nowrap; }
       <button type="submit" class="knopf" data-i18n="eiSenden"></button>
     </div>
   </form>
+</dialog>
+
+<!-- =============== FREIE ZEITEN SUCHEN =============== -->
+<dialog id="dlgSuchen">
+  <div class="dlgInhalt">
+    <h2 data-i18n="suTitel"></h2>
+    <p class="dlgUnter" data-i18n="suUnter"></p>
+
+    <label data-i18n="suOrbit"></label>
+    <div class="personen" id="suOrbits"></div>
+
+    <label data-i18n="suArt"></label>
+    <div class="personen" id="suArten"></div>
+
+    <div class="reihe" style="margin-top:6px">
+      <div><label for="suVon" data-i18n="tfVon"></label><input type="date" id="suVon"></div>
+      <div><label for="suBis" data-i18n="tfBis"></label><input type="date" id="suBis"></div>
+    </div>
+
+    <div id="suFehler" class="fehler"></div>
+    <div id="suGut" class="gutText"></div>
+    <div id="suErgebnis" style="margin-top:14px;display:flex;flex-direction:column;gap:8px"></div>
+
+    <div class="aktionen">
+      <button type="button" class="knopf hell" id="suZu" data-i18n="schliessen"></button>
+      <button type="button" class="knopf" id="suStart" data-i18n="suSuchen"></button>
+    </div>
+  </div>
 </dialog>
 
 <!-- =============== TERMIN FINDEN =============== -->
@@ -1110,6 +1157,7 @@ td.n { color: var(--text2); white-space: nowrap; }
       <label data-i18n="mnEinstellungen"></label>
       <div class="menueListe">
         <button type="button" class="menuePunkt" id="mUebersicht" data-i18n="mnUebersicht"></button>
+        <button type="button" class="menuePunkt versteckt" id="mSuchen" data-i18n="suTitel"></button>
         <button type="button" class="menuePunkt" id="nameBtn" data-i18n="nmAendern"></button>
         <button type="button" class="menuePunkt versteckt" id="betriebBtn" data-i18n="bTitel"></button>
         <button type="button" class="menuePunkt" id="logoutBtn" data-i18n="koAbmelden"></button>
