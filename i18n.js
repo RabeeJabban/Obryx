@@ -143,6 +143,43 @@ de: {
   // ---- Serie als Schalter ----
   fWiederholt: "Wiederholt sich",
 
+
+  // ---- Terminarten mit eigenem Zeitplan ----
+  kArtTage: "An welchen Tagen",
+  kArtZeitraum: "In dieser Zeit",
+  kArtPlaetze: "Wie viele gleichzeitig",
+  kArtPlaetzeHinweis: "1 heißt: das Zeitfenster gehört genau einer Person, wie eine " +
+                      "Fahrstunde. 4 heißt: vier Leute können dieselbe Schicht nehmen. " +
+                      "Leer heißt: keine Begrenzung, dann entstehen auch keine festen " +
+                      "Zeitfenster.",
+  kArtOhne: "frei planbar",
+  kArtEinZeile: "{tage} · {von}–{bis} · {dauer} Min · {plaetze}",
+  kArtEinPlatz: "1 Platz",
+  kArtPlaetzeN: "{n} Plätze",
+  kArtFrei: "ohne Begrenzung",
+  kArtTageFehlt: "Wähle die Tage und die Zeit für diese Terminart.",
+
+  // ---- Pausen ----
+  kPausen: "Pausen",
+  kPausenHinweis: "In dieser Zeit entsteht kein Zeitfenster. Für Mittag, Fahrtwege, " +
+                  "oder was sonst frei bleiben soll.",
+  kPauseHinzu: "Pause hinzufügen",
+  kPauseKeine: "Keine Pause festgelegt.",
+  kPause: "Pause",
+
+  // ---- Plätze im Zeitfenster ----
+  slPlaetze: "{frei} von {alle} frei",
+  slVoll: "voll",
+  slEinerFrei: "frei",
+
+  // ---- Schreibtisch ----
+  dsHeute: "Heute",
+  dsNichts: "Für heute ist nichts eingetragen.",
+  dsOffen: "Offen von vorher",
+  dsLegende: "Feiertag und Schulferien",
+  lgFeiertag: "Feiertag",
+  lgFerien: "Schulferien",
+
   // Marke
   spruch: "Ordnung für alles, was gleichzeitig läuft.",
   anmelden: "Mit Google anmelden",
@@ -270,10 +307,11 @@ de: {
   kFarbe: "Farbe",
   kArt: "Art",
   kArtKreis: "Offene Gruppe",
-  kArtStern: "Geschlossene Gruppe",
-  kArtHinweis: "In der offenen Gruppe sehen alle die belegten Zeiten aller. " +
-               "In der geschlossenen sehen die Mitglieder nur dich, und nicht " +
-               "einander. Für Kunden, Schüler oder Fahrer nimm die geschlossene.",
+  kArtStern: "Service-Gruppe",
+  kArtHinweis: "Offene Gruppe: alle sehen sich gegenseitig und planen miteinander. " +
+               "Für Familie und Team. Service-Gruppe: du bietest Zeiten an, deine " +
+               "Leute buchen sie. Sie sehen nur dich, nicht einander. Für " +
+               "Fahrschüler, Kunden, Fahrer.",
   kAnlegen: "Anlegen",
   kEinladen: "Einladen",
   kVerwalter: "Verwalter",
@@ -484,6 +522,37 @@ ar: {
 
   fWiederholt: "يتكرر",
 
+
+  kArtTage: "في أي أيام",
+  kArtZeitraum: "في هذا الوقت",
+  kArtPlaetze: "كم شخصاً في الوقت نفسه",
+  kArtPlaetzeHinweis: "1 يعني أن الفترة تخص شخصاً واحداً، مثل درس قيادة. 4 يعني أن " +
+                      "أربعة يمكنهم أخذ الوردية نفسها. والفراغ يعني بلا حد، " +
+                      "وعندها لا تنشأ فترات ثابتة.",
+  kArtOhne: "تخطيط حر",
+  kArtEinZeile: "{tage} · {von}–{bis} · {dauer} دقيقة · {plaetze}",
+  kArtEinPlatz: "مكان واحد",
+  kArtPlaetzeN: "{n} أماكن",
+  kArtFrei: "بلا حد",
+  kArtTageFehlt: "اختر الأيام والوقت لهذا النوع.",
+
+  kPausen: "الاستراحات",
+  kPausenHinweis: "في هذا الوقت لا تنشأ فترات. للغداء أو التنقل أو ما تريد إبقاءه فارغاً.",
+  kPauseHinzu: "إضافة استراحة",
+  kPauseKeine: "لا استراحة محددة.",
+  kPause: "استراحة",
+
+  slPlaetze: "{frei} من {alle} متاح",
+  slVoll: "مكتمل",
+  slEinerFrei: "متاح",
+
+  dsHeute: "اليوم",
+  dsNichts: "لا يوجد شيء اليوم.",
+  dsOffen: "مفتوح من قبل",
+  dsLegende: "عطلة رسمية ومدرسية",
+  lgFeiertag: "عطلة رسمية",
+  lgFerien: "عطلة مدرسية",
+
   spruch: "تنظيم لكل ما يجري في وقت واحد.",
   anmelden: "تسجيل الدخول عبر Google",
   anmeldenFehl: "فشل تسجيل الدخول: {code}",
@@ -598,10 +667,10 @@ ar: {
   kFarbe: "اللون",
   kArt: "النوع",
   kArtKreis: "مجموعة مفتوحة",
-  kArtStern: "مجموعة مغلقة",
-  kArtHinweis: "في المجموعة المفتوحة يرى الجميع أوقات الجميع المشغولة. وفي المغلقة " +
-               "يرى الأعضاء أوقاتك أنت فقط، ولا يرون بعضهم. للزبائن أو الطلاب " +
-               "أو السائقين اختر المغلقة.",
+  kArtStern: "مجموعة خدمات",
+  kArtHinweis: "مجموعة مفتوحة: الجميع يرون بعضهم ويخططون معاً. للعائلة والفريق. " +
+               "مجموعة خدمات: أنت تعرض الأوقات وهم يحجزونها. يرونك أنت فقط ولا " +
+               "يرون بعضهم. للطلاب والزبائن والسائقين.",
   kAnlegen: "إنشاء",
   kEinladen: "دعوة",
   kVerwalter: "مشرف",
