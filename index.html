@@ -102,6 +102,34 @@ body {
 }
 [dir="rtl"] body { font-family: system-ui, "Segoe UI", Tahoma, Arial, sans-serif; }
 
+/* Arabische Schrift traegt bei gleicher Pixelzahl dicker auf als lateinische.
+   Deshalb hier durchgehend eine Stufe kleiner, sonst wirkt alles gedraengt. */
+[dir="rtl"] body            { font-size: 15px; }
+[dir="rtl"] .karte h1       { font-size: 27px; }
+[dir="rtl"] .karte p        { font-size: 13px; }
+[dir="rtl"] dialog h2       { font-size: 18px; }
+[dir="rtl"] dialog .dlgUnter{ font-size: 12.5px; }
+[dir="rtl"] header .marke b { font-size: 17.5px; }
+[dir="rtl"] .zeitleiste b   { font-size: 17.5px; }
+[dir="rtl"] .zeitleiste .unter { font-size: 12.5px; }
+[dir="rtl"] nav.ansichten button { font-size: 12.5px; }
+[dir="rtl"] .filter button  { font-size: 12px; }
+[dir="rtl"] .knopf          { font-size: 13.5px; }
+[dir="rtl"] .menuePunkt     { font-size: 13.5px; }
+[dir="rtl"] .wahl button    { font-size: 13px; }
+[dir="rtl"] .person         { font-size: 12.5px; }
+[dir="rtl"] label           { font-size: 12.5px; }
+[dir="rtl"] .hinweis        { font-size: 11.5px; }
+[dir="rtl"] .eintrag .titel { font-size: 14px; }
+[dir="rtl"] .eintrag .unterzeile { font-size: 12.5px; }
+[dir="rtl"] .balken b       { font-size: 11.5px; }
+[dir="rtl"] .balken small   { font-size: 10.5px; }
+[dir="rtl"] .planName       { font-size: 12px; }
+[dir="rtl"] .chip           { font-size: 12.5px; }
+[dir="rtl"] .kachel b       { font-size: 20px; }
+[dir="rtl"] .mitglied       { font-size: 13px; }
+[dir="rtl"] .post .text     { font-size: 13px; }
+
 button, input, textarea, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 .versteckt { display: none !important; }
@@ -130,8 +158,8 @@ button { cursor: pointer; }
 .sprachwahl button.an { background: var(--akzent); border-color: var(--akzent); color: #fff; }
 
 .knopf {
-  width: 100%; padding: 13px 18px; border: 0; border-radius: 12px;
-  background: var(--akzent); color: #fff; font-size: 15px; font-weight: 600;
+  width: 100%; padding: 10px 16px; border: 0; border-radius: 11px;
+  background: var(--akzent); color: #fff; font-size: 14px; font-weight: 600;
 }
 .knopf.hell { background: var(--flaeche2); color: var(--text); }
 .knopf.rand { background: none; color: var(--text2); border: 1px solid var(--linie2); }
@@ -157,10 +185,12 @@ header .marke.dreht svg { animation: dreh .9s linear infinite; }
 @keyframes dreh { to { transform: rotate(360deg); } }
 
 .rundknopf {
-  width: 38px; height: 38px; flex-shrink: 0; border-radius: 11px; padding: 0;
+  width: 34px; height: 34px; flex-shrink: 0; border-radius: 10px; padding: 0;
   border: 1px solid var(--linie); background: var(--flaeche); color: var(--text2);
   display: flex; align-items: center; justify-content: center;
 }
+/* Der Orbits-Knopf ist der wichtigste oben, deshalb bekommt er Farbe */
+.rundknopf.bunt { background: var(--akzentHell); border-color: var(--akzent); }
 .rundknopf img { width: 100%; height: 100%; border-radius: 10px; object-fit: cover; }
 .rundknopf[data-kuerzel]:not([data-kuerzel=""])::after {
   content: attr(data-kuerzel); font-size: 15px; font-weight: 700; color: var(--text2);
@@ -181,17 +211,17 @@ nav.ansichten {
 }
 nav.ansichten::-webkit-scrollbar { display: none; }
 nav.ansichten button {
-  flex: 1 0 auto; padding: 8px 11px; border: 0; border-radius: 99px;
+  flex: 1 0 auto; padding: 6px 10px; border: 0; border-radius: 99px;
   background: none; color: var(--text2);
-  font-size: 14px; font-weight: 600; white-space: nowrap;
+  font-size: 13.5px; font-weight: 600; white-space: nowrap;
 }
 @media (min-width: 420px) { nav.ansichten button { padding: 8px 16px; } }
 nav.ansichten button.an { background: var(--flaeche2); color: var(--text); }
 
 .filter { display: flex; gap: 6px; padding: 8px 14px 0; max-width: 1100px; margin: 0 auto; }
 .filter button {
-  flex: 1; padding: 7px 10px; border: 1px solid var(--linie); border-radius: 10px;
-  background: var(--flaeche); color: var(--text2); font-size: 13px; font-weight: 600;
+  flex: 1; padding: 6px 9px; border: 1px solid var(--linie); border-radius: 9px;
+  background: var(--flaeche); color: var(--text2); font-size: 12.5px; font-weight: 600;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .filter button.an { background: var(--akzentHell); border-color: var(--akzent); color: var(--akzent); }
@@ -208,7 +238,7 @@ nav.ansichten button.an { background: var(--flaeche2); color: var(--text); }
   display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
 }
 .pfeil {
-  width: 38px; height: 38px; flex-shrink: 0; border-radius: 11px; padding: 0;
+  width: 34px; height: 34px; flex-shrink: 0; border-radius: 10px; padding: 0;
   border: 1px solid var(--linie); background: var(--flaeche); color: var(--text2);
   font-size: 18px; line-height: 1;
 }
@@ -381,7 +411,7 @@ main {
 
 .zusage { display: flex; gap: 7px; margin-top: 9px; flex-wrap: wrap; }
 .zusage button {
-  padding: 6px 13px; border-radius: 9px; font-size: 13px; font-weight: 600;
+  padding: 5px 12px; border-radius: 9px; font-size: 12.5px; font-weight: 600;
   border: 1px solid var(--linie2); background: none; color: var(--text2);
 }
 .zusage button.ja.an { background: var(--gruen); border-color: var(--gruen); color: #fff; }
@@ -408,8 +438,8 @@ main {
 /* ---------- Personen und Lücken ---------- */
 .personen { display: flex; flex-wrap: wrap; gap: 7px; }
 .person {
-  padding: 8px 13px; border-radius: 99px; border: 1px solid var(--linie2);
-  background: var(--flaeche); color: var(--text2); font-size: 14px; font-weight: 600;
+  padding: 6px 11px; border-radius: 99px; border: 1px solid var(--linie2);
+  background: var(--flaeche); color: var(--text2); font-size: 13px; font-weight: 600;
   display: flex; align-items: center; gap: 7px;
 }
 .person.an { background: var(--gruen); border-color: var(--gruen); color: #fff; }
@@ -446,7 +476,7 @@ main {
 }
 .einladung .warte { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--orange); }
 .klein {
-  padding: 5px 10px; font-size: 12px; border-radius: 8px;
+  padding: 4px 9px; font-size: 11.5px; border-radius: 8px;
   border: 1px solid var(--linie2); background: none; color: var(--text2);
 }
 .klein.gefahr { color: var(--rot); border-color: var(--rot); }
@@ -473,15 +503,15 @@ main {
 .post .text { margin-top: 5px; font-size: 14px; overflow-wrap: anywhere; }
 .post .knoepfe { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .post .knoepfe button {
-  padding: 6px 12px; font-size: 13px; border-radius: 9px;
+  padding: 5px 11px; font-size: 12.5px; border-radius: 9px;
   border: 1px solid var(--linie2); background: none; color: var(--text2);
 }
 
 /* ---------- Formular ---------- */
 .plus {
   position: fixed; z-index: 45; inset-inline-end: 16px; bottom: calc(16px + var(--unten));
-  width: 58px; height: 58px; border-radius: 50%; border: 0;
-  background: var(--akzent); color: #fff; font-size: 30px; line-height: 1;
+  width: 50px; height: 50px; border-radius: 50%; border: 0;
+  background: var(--akzent); color: #fff; font-size: 26px; line-height: 1;
   box-shadow: var(--schatten2);
 }
 dialog {
@@ -499,8 +529,8 @@ dialog .dlgUnter { margin: 0 0 18px; font-size: 13px; color: var(--text2); }
 label { display: block; font-size: 13px; font-weight: 600; color: var(--text2); margin: 14px 0 6px; }
 input[type=text], input[type=date], input[type=time],
 input[type=email], input[type=search], input[type=number], textarea {
-  width: 100%; padding: 11px 13px; border: 1px solid var(--linie);
-  border-radius: 12px; background: var(--grund); color: var(--text);
+  width: 100%; padding: 9px 12px; border: 1px solid var(--linie);
+  border-radius: 11px; background: var(--grund); color: var(--text);
 }
 textarea { resize: vertical; min-height: 62px; }
 .reihe { display: flex; gap: 10px; }
@@ -508,16 +538,16 @@ textarea { resize: vertical; min-height: 62px; }
 
 .wahl { display: flex; gap: 7px; }
 .wahl button {
-  flex: 1; padding: 11px 8px; border: 1px solid var(--linie); border-radius: 12px;
-  background: var(--grund); color: var(--text2); font-size: 14px; font-weight: 600;
+  flex: 1; padding: 9px 8px; border: 1px solid var(--linie); border-radius: 11px;
+  background: var(--grund); color: var(--text2); font-size: 13.5px; font-weight: 600;
 }
 .wahl button.an { background: var(--akzent); border-color: var(--akzent); color: #fff; }
 .wahl.klein { margin-top: 12px; }
 
 .tageWahl { display: flex; gap: 5px; }
 .tagKnopf {
-  flex: 1; padding: 10px 0; border: 1px solid var(--linie); border-radius: 10px;
-  background: var(--grund); color: var(--text2); font-size: 13px; font-weight: 600;
+  flex: 1; padding: 8px 0; border: 1px solid var(--linie); border-radius: 9px;
+  background: var(--grund); color: var(--text2); font-size: 12.5px; font-weight: 600;
 }
 .tagKnopf.an { background: var(--gruen); border-color: var(--gruen); color: #fff; }
 
@@ -540,6 +570,22 @@ textarea { resize: vertical; min-height: 62px; }
 }
 .zeile2 .wachs { flex-grow: 1; min-width: 0; }
 .zeile2 .wachs small { display: block; font-size: 12px; color: var(--text3); direction: ltr; }
+
+/* Menue hinter dem Profilbild */
+.menueListe { display: flex; flex-direction: column; gap: 6px; }
+.menuePunkt {
+  width: 100%; text-align: start; padding: 11px 13px; border-radius: 11px;
+  border: 1px solid var(--linie); background: var(--flaeche); color: var(--text);
+  font-size: 14px; font-weight: 600;
+  display: flex; align-items: center; gap: 9px;
+}
+.menuePunkt.an { background: var(--akzentHell); border-color: var(--akzent); color: var(--akzent); }
+.menuePunkt .pfeilchen { margin-inline-start: auto; color: var(--text3); font-weight: 400; }
+
+/* Kacheln der Übersicht sind anklickbar */
+.kachel { border: 1px solid transparent; }
+button.kachel { cursor: pointer; }
+button.kachel:active { border-color: var(--akzent); }
 
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th { text-align: start; font-size: 11px; font-weight: 700; letter-spacing: .5px;
@@ -612,10 +658,12 @@ td.n { color: var(--text2); white-space: nowrap; }
       </svg>
     </button>
 
-    <button class="rundknopf" id="kreiseBtn" data-i18n-al="kreise">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="9" cy="12" r="6"></circle><circle cx="15" cy="12" r="6"></circle>
+    <button class="rundknopf bunt" id="kreiseBtn" style="position:relative" data-i18n-al="kreise">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke-width="2.3">
+        <circle cx="9" cy="12" r="6" stroke="var(--gruen)"></circle>
+        <circle cx="15" cy="12" r="6" stroke="var(--blau)"></circle>
       </svg>
+      <span class="zaehler versteckt" id="orbitZahl">0</span>
     </button>
 
     <button class="rundknopf" id="postBtn" data-i18n-al="nachrichten" style="position:relative">
@@ -635,7 +683,7 @@ td.n { color: var(--text2); white-space: nowrap; }
     <button data-v="woche" data-i18n="vWoche"></button>
     <button data-v="monat" data-i18n="vMonat"></button>
     <button data-v="aufgaben" data-i18n="vAufgaben"></button>
-    <button data-v="liste" data-i18n="vListe"></button>
+    <button data-v="fristen" data-i18n="vListe"></button>
   </nav>
 
   <div class="filter" id="filter"></div>
@@ -681,10 +729,9 @@ td.n { color: var(--text2); white-space: nowrap; }
       <button type="button" id="typTermin" class="an" data-i18n="fTermin"></button>
       <button type="button" id="typTask" data-i18n="fAufgabe"></button>
     </div>
-    <div class="wahl klein">
-      <button type="button" id="wdhEinmal" class="an" data-i18n="fEinmal"></button>
-      <button type="button" id="wdhSerie" data-i18n="fSerie"></button>
-    </div>
+    <label class="schalter" for="fSerieAn" style="margin-top:14px">
+      <input type="checkbox" id="fSerieAn"><span data-i18n="fWiederholt"></span>
+    </label>
 
     <div id="artenBlock" class="versteckt" style="margin-top:14px">
       <label data-i18n="kArten"></label>
@@ -756,36 +803,48 @@ td.n { color: var(--text2); white-space: nowrap; }
     <p class="dlgUnter" data-i18n="kUnter"></p>
     <div id="kreisListe" style="display:flex;flex-direction:column;gap:12px"></div>
 
-    <div class="block" id="neuerKreisBlock">
-      <label for="kName" data-i18n="kNeuer"></label>
-      <input type="text" id="kName" maxlength="40" data-i18n-ph="kNameBsp">
-      <label data-i18n="kArt"></label>
-      <div class="wahl">
-        <button type="button" id="artKreis" class="an" data-i18n="kArtKreis"></button>
-        <button type="button" id="artStern" data-i18n="kArtStern"></button>
-      </div>
-      <p class="hinweis" data-i18n="kArtHinweis"></p>
-      <label data-i18n="kBelegung"></label>
-      <div class="wahl">
-        <button type="button" id="belParallel" class="an" data-i18n="kParallel"></button>
-        <button type="button" id="belExklusiv" data-i18n="kExklusiv"></button>
-      </div>
-      <p class="hinweis" data-i18n="kBelegungHinweis"></p>
-      <label data-i18n="kFarbe"></label>
-      <div class="farbwahl" id="kFarben"></div>
-      <div id="kreisFehler" class="fehler"></div>
-      <div class="aktionen">
-        <button type="button" class="knopf hell" id="kreiseZu" data-i18n="schliessen"></button>
-        <button type="button" class="knopf" id="kreisAnlegen" data-i18n="kAnlegen"></button>
-      </div>
-    </div>
-    <div class="aktionen versteckt" id="kreiseNurZu">
-      <button type="button" class="knopf hell" id="kreiseZu2" data-i18n="schliessen"></button>
+    <div class="aktionen">
+      <button type="button" class="knopf hell" id="kreiseZu" data-i18n="schliessen"></button>
+      <button type="button" class="knopf versteckt" id="orbitNeuBtn" data-i18n="kNeuer"></button>
     </div>
   </div>
 </dialog>
 
-<!-- =============== KREIS EINSTELLEN =============== -->
+<!-- =============== NEUER ORBIT =============== -->
+<dialog id="dlgOrbitNeu">
+  <form id="formOrbitNeu" class="dlgInhalt">
+    <h2 data-i18n="kNeuer"></h2>
+    <p class="dlgUnter" data-i18n="kUnter"></p>
+
+    <label for="kName" data-i18n="kName"></label>
+    <input type="text" id="kName" maxlength="40" required data-i18n-ph="kNameBsp">
+
+    <label data-i18n="kArt"></label>
+    <div class="wahl">
+      <button type="button" id="artKreis" class="an" data-i18n="kArtKreis"></button>
+      <button type="button" id="artStern" data-i18n="kArtStern"></button>
+    </div>
+    <p class="hinweis" data-i18n="kArtHinweis"></p>
+
+    <label data-i18n="kBelegung"></label>
+    <div class="wahl">
+      <button type="button" id="belParallel" class="an" data-i18n="kParallel"></button>
+      <button type="button" id="belExklusiv" data-i18n="kExklusiv"></button>
+    </div>
+    <p class="hinweis" data-i18n="kBelegungHinweis"></p>
+
+    <label data-i18n="kFarbe"></label>
+    <div class="farbwahl" id="kFarben"></div>
+
+    <div id="kreisFehler" class="fehler"></div>
+    <div class="aktionen">
+      <button type="button" class="knopf hell" id="orbitNeuZu" data-i18n="abbrechen"></button>
+      <button type="submit" class="knopf" id="kreisAnlegen" data-i18n="kAnlegen"></button>
+    </div>
+  </form>
+</dialog>
+
+<!-- =============== ORBIT EINSTELLEN =============== -->
 <dialog id="dlgKreisEinst">
   <div class="dlgInhalt">
     <h2 data-i18n="kEinstellungen"></h2>
@@ -917,30 +976,47 @@ td.n { color: var(--text2); white-space: nowrap; }
 </dialog>
 
 <!-- =============== KONTO =============== -->
-<dialog id="dlgMich">
+<dialog id="dlgMenue">
   <div class="dlgInhalt">
     <h2 id="michName"></h2>
     <p class="dlgUnter" id="michMail"></p>
 
     <div class="block">
+      <label data-i18n="mnAnsichten"></label>
+      <div class="menueListe" id="menueAnsichten"></div>
+    </div>
+
+    <div class="block">
+      <label data-i18n="mnEinstellungen"></label>
+      <div class="menueListe">
+        <button type="button" class="menuePunkt" id="mUebersicht" data-i18n="mnUebersicht"></button>
+        <button type="button" class="menuePunkt" id="nameBtn" data-i18n="nmAendern"></button>
+        <button type="button" class="menuePunkt versteckt" id="betriebBtn" data-i18n="bTitel"></button>
+        <button type="button" class="menuePunkt" id="logoutBtn" data-i18n="koAbmelden"></button>
+      </div>
       <label data-i18n="koSprache"></label>
       <div class="sprachwahl" id="sprachwahl2" style="justify-content:flex-start"></div>
     </div>
 
-    <div class="block">
-      <label data-i18n="koZahlen"></label>
-      <div class="kacheln" id="meineZahlen"></div>
-    </div>
-
+    <p class="hinweis" id="fassungText"></p>
     <div class="aktionen">
       <button type="button" class="knopf hell" id="michZu" data-i18n="schliessen"></button>
-      <button type="button" class="knopf rand" id="nameBtn" data-i18n="nmAendern"></button>
     </div>
-    <div class="aktionen" style="margin-top:9px">
-      <button type="button" class="knopf rand versteckt" id="betriebBtn" data-i18n="bTitel"></button>
-      <button type="button" class="knopf rand" id="logoutBtn" data-i18n="koAbmelden"></button>
+  </div>
+</dialog>
+
+<!-- =============== ÜBERSICHT =============== -->
+<dialog id="dlgUebersicht">
+  <div class="dlgInhalt">
+    <h2 data-i18n="mnUebersicht"></h2>
+    <p class="dlgUnter" id="uebersichtUnter"></p>
+    <div class="kacheln" id="meineZahlen"></div>
+    <div id="uebersichtListe" class="versteckt"
+         style="display:flex;flex-direction:column;gap:8px;margin-top:16px"></div>
+    <div class="aktionen">
+      <button type="button" class="knopf hell" id="uebersichtZu" data-i18n="schliessen"></button>
+      <button type="button" class="knopf rand versteckt" id="uebersichtZurueck" data-i18n="uZurueck"></button>
     </div>
-    <p class="hinweis" id="fassungText"></p>
   </div>
 </dialog>
 
