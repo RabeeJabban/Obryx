@@ -27,6 +27,34 @@ export const TEXTE = {
 
 /* ================================ DEUTSCH ================================ */
 de: {
+  deinArbeitsplatz: "Alles an einem Ort",
+  meinPlan: "Mein Orbit",
+  planPrivat: "Persönlicher Kalender",
+  startFehler: "Orbyx konnte nicht geladen werden. Prüfe deine Internetverbindung und lade die Seite neu.",
+  artAnbieter: "Zuständiger Lehrer / Anbieter",
+  abAbsagen: "Termin absagen",
+  serieZuGross: "Dieser Termin umfasst zu viele Reservierungen. Verkürze die Dauer beziehungsweise die Serie oder teile den Zeitraum auf.",
+  eiEinladen: "Darf Personen in diesen Orbit einladen",
+  eiTerminarten: "Erlaubte Terminarten",
+  eiTerminartenHinweis: "Nur angehakte Arten sind buchbar. Ohne Auswahl ist keine Buchung möglich. Verwalter und Planer dürfen alle Arten verwalten.",
+  eiKreiseAnlegen: "Darf eigene Orbits erstellen",
+  rechteBearbeiten: "Rechte bearbeiten",
+  serviceRasterNutzen: "Wähle eine Terminart und ein freies Zeitfenster im Plan. Weise jeden Platz einzeln zu.",
+  planPrivatHinweis: "Dein Tag, deine Aufgaben und die Zeit dazwischen.",
+  planTeamHinweis: "Gemeinsam planen, Termine verteilen und den Überblick behalten.",
+  planBuchenHinweis: "Plan ansehen, freie Zeiten finden und deinen Termin buchen.",
+  termineHeute: "Termine heute", mitgliederZahl: "Mitglieder", gruppenZahl: "Gruppen",
+  freieZeitenTag: "Freie Zeiten am gewählten Tag", offeneAufgaben: "Offene Aufgaben",
+  kZeitenProTag: "Aktiviere deine Arbeitstage und passe die Uhrzeiten je Tag an. Samstag kann kürzer sein; für geteilte Schichten füge eine weitere Zeit hinzu.",
+  kArtSpeichern: "Terminart speichern",
+  kNurEinRest: "Eine Terminart übernimmt bereits die Restzeit. Bearbeite diese Art oder gib der neuen Art feste Zeiten. Die Restzeit wird automatisch neu berechnet.",
+  bearbeiten: "Bearbeiten", rechteFehlen: "Für diese Änderung fehlen dir die Rechte.",
+  rolleFuer: "Gruppenrolle für {name}", rolleMitglied: "Mitglied", rollePlaner: "Plan bearbeiten",
+  eiAlsPlaner: "Darf den Gruppenplan bearbeiten und Termine zuweisen",
+  eiVollzugriff: "Eigener Kalender und Aufgaben freigeben",
+  eiZugangHinweis: "Ohne eigenen Kalender: nur Orbit-Plan und Terminsuche. Diese Kontorechte kann der Betreiber vergeben. Sie werden beim Annehmen der Einladung übernommen.",
+  zugangTitel: "App-Zugang", zugangPlan: "Nur Gruppenplan", zugangVoll: "Kalender + Aufgaben",
+  keineGruppeZugang: "Dir ist noch keine Gruppe zugeordnet. Nimm eine Einladung unter Nachrichten an oder bitte deinen Verwalter um Zugang.",
   wochentage: ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag","Sonntag"],
   kurzTage:   ["Mo","Di","Mi","Do","Fr","Sa","So"],
   monate: ["Januar","Februar","März","April","Mai","Juni",
@@ -42,7 +70,7 @@ de: {
   planNiemand: "Heute ist niemand eingetragen.",
   planBelegt: "Belegt",
   planAnderswo: "Anderswo",
-  planIch: "Ich",
+  planIch: "Mein Orbit",
   planGanzerTag: "Ohne Uhrzeit",
   planJetzt: "jetzt",
   planFrei: "frei",
@@ -336,6 +364,9 @@ de: {
   fZuweisenHinweis: "Die Ausgewählten bekommen eine Anfrage und können zusagen " +
                     "oder absagen. Du siehst, wer geantwortet hat.",
   fTagAbsagen: "Am {datum} absagen",
+  fTerminLoeschen: "Termin löschen", fAufgabeLoeschen: "Aufgabe löschen",
+  fSerieLoeschen: "Ganze Serie löschen", fTagLoeschen: "Nur am {datum} löschen",
+  eGeloescht: "Eintrag gelöscht.", eTagGeloescht: "Eintrag für diesen Tag gelöscht.",
   abbrechen: "Abbrechen", speichern: "Speichern", schliessen: "Schließen",
 
   // Formularfehler
@@ -347,10 +378,10 @@ de: {
   eSerienende: "Eine Serie braucht ein Enddatum.",
   eSerieVor: "Das Serienende liegt vor dem ersten Tag.",
   eSpeichern: "Speichern fehlgeschlagen: {code}",
-  eLoeschenFrage: "Diesen Eintrag löschen?",
+  eLoeschenFrage: "Den Eintrag „{titel}“ löschen?",
   eSerieLoeschen: "Die ganze Serie „{titel}“ löschen?\n\nWenn nur dieser Tag " +
                   "ausfallen soll: abbrechen, auf den Eintrag tippen und " +
-                  "„Diesen Tag absagen“ wählen.",
+                  "„Nur am … löschen“ wählen.",
 
   // Kreise
   kTitel: "Orbits",
@@ -361,13 +392,13 @@ de: {
   kName: "Name", kNameBsp: "Familie, Team, Kunden …",
   kFarbe: "Farbe",
   kArt: "Art",
-  kArtKreis: "Offene Gruppe",
-  kArtStern: "Service-Gruppe",
+  kArtKreis: "Offener Orbit",
+  kArtStern: "Service-Orbit",
   kArtHinweis: "Offene Gruppe: alle sehen sich gegenseitig und planen miteinander. " +
-               "Für Familie und Team. Service-Gruppe: du bietest Zeiten an, deine " +
+               "Für Familie und Team. Service-Orbit: du bietest Zeiten an, deine " +
                "Leute buchen sie. Sie sehen nur dich, nicht einander. Für " +
                "Fahrschüler, Kunden, Fahrer.",
-  kAnlegen: "Anlegen",
+  kAnlegen: "Weiter: Arbeitszeiten",
   kEinladen: "Einladen",
   kVerwalter: "Verwalter",
   kDu: "(du)",
@@ -457,7 +488,7 @@ de: {
 
   // Betreiber
   bTitel: "Betrieb",
-  bUnter: "Konten und Orbits. Termine und Inhalte stehen hier bewusst nicht.",
+  bUnter: "Kontozugang, Gruppen und Berechtigungen zentral verwalten.",
   bPersonen: "Personen",
   bAktiv7: "aktiv, 7 Tage",
   bKreise: "Orbits",
@@ -468,9 +499,7 @@ de: {
   bSperren: "Sperren", bFreigeben: "Freigeben",
   bDarfKreise: "Orbits anlegen",
   bJa: "ja", bNein: "nein",
-  bHinweis: "Sperren wirkt beim nächsten Laden der App. Wer sofort raus soll, " +
-            "wird zusätzlich in der Firebase Console unter Authentication " +
-            "deaktiviert.",
+  bHinweis: "Kontosperren werden von den Datenbankregeln durchgesetzt. Die App übernimmt Änderungen am Zugang bei bestehender Verbindung automatisch.",
   bAlleKreise: "Alle Orbits, die du siehst",
   bOffen: "{n} offen",
   bFehler: "Konnte nicht laden: {code}"
@@ -478,6 +507,34 @@ de: {
 
 /* ================================ ARABISCH ================================ */
 ar: {
+  planPrivat: "التقويم الشخصي",
+  artAnbieter: "المعلم / مقدم الخدمة المسؤول",
+  abAbsagen: "إلغاء الموعد",
+  serieZuGross: "تحتوي هذه الفترة على عدد كبير من الحجوزات. يرجى تقصير السلسلة أو تقسيمها إلى فترات أقصر.",
+  eiEinladen: "يمكنه دعوة أشخاص إلى هذا المدار",
+  eiTerminarten: "أنواع المواعيد المسموح بها",
+  eiTerminartenHinweis: "يمكن حجز الأنواع المحددة فقط. عند عدم تحديد أي نوع لا يمكن الحجز. يمكن للمديرين والمخططين إدارة جميع الأنواع.",
+  eiKreiseAnlegen: "يمكنه إنشاء مدارات خاصة",
+  rechteBearbeiten: "تعديل الصلاحيات",
+  serviceRasterNutzen: "اختر نوع الموعد وفترة متاحة في الخطة. خصص كل مقعد بشكل منفصل.",
+  deinArbeitsplatz: "كل شيء في مكان واحد",
+  meinPlan: "مداري",
+  startFehler: "تعذر تحميل Orbyx. تحقق من اتصال الإنترنت وأعد تحميل الصفحة.",
+  planPrivatHinweis: "يومك ومهامك والوقت بينهما.",
+  planTeamHinweis: "خططوا معاً ووزعوا المواعيد وتابعوا العمل.",
+  planBuchenHinweis: "اعرض الخطة وابحث عن وقت متاح واحجز موعدك.",
+  termineHeute: "مواعيد اليوم", mitgliederZahl: "الأعضاء", gruppenZahl: "المجموعات",
+  freieZeitenTag: "الأوقات المتاحة في اليوم المحدد", offeneAufgaben: "المهام المفتوحة",
+  kZeitenProTag: "فعّل أيام العمل وحدد وقتاً لكل يوم. يمكن أن يكون السبت أقصر، ويمكن إضافة فترة أخرى للدوام المقسوم.",
+  kArtSpeichern: "حفظ نوع الموعد",
+  kNurEinRest: "هناك نوع موعد يستخدم الوقت المتبقي بالفعل. عدّله أو حدد أوقاتاً ثابتة للنوع الجديد. يُعاد حساب الوقت المتبقي تلقائياً.",
+  bearbeiten: "تعديل", rechteFehlen: "ليست لديك صلاحية لهذا التعديل.",
+  rolleFuer: "دور {name} في المجموعة", rolleMitglied: "عضو", rollePlaner: "تعديل الخطة",
+  eiAlsPlaner: "يمكنه تعديل خطة المجموعة وتوزيع المواعيد",
+  eiVollzugriff: "السماح بالتقويم الشخصي والمهام",
+  eiZugangHinweis: "بدون علامة: خطة المجموعة والبحث عن المواعيد فقط. تُمنح صلاحية إنشاء المجموعات بشكل منفصل من الإدارة. يُطبّق هذا الخيار عند قبول الدعوة.",
+  zugangTitel: "صلاحيات التطبيق", zugangPlan: "خطة المجموعة فقط", zugangVoll: "تقويم ومهام",
+  keineGruppeZugang: "لم تُضف إلى مجموعة بعد. اقبل دعوة من الرسائل أو اطلب الوصول من المسؤول.",
   wochentage: ["الاثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت","الأحد"],
   kurzTage:   ["إث","ثل","أر","خم","جم","سب","أح"],
   monate: ["يناير","فبراير","مارس","أبريل","مايو","يونيو",
@@ -490,7 +547,7 @@ ar: {
   planNiemand: "لا أحد مسجَّل اليوم.",
   planBelegt: "مشغول",
   planAnderswo: "في مكان آخر",
-  planIch: "أنا",
+  planIch: "مداري",
   planGanzerTag: "بدون وقت",
   planJetzt: "الآن",
   planFrei: "متاح",
@@ -749,6 +806,9 @@ ar: {
   fZuweisenHinweis: "من تختارهم يصلهم طلب ويمكنهم الموافقة أو الاعتذار. " +
                     "وسترى من ردّ.",
   fTagAbsagen: "إلغاء يوم {datum}",
+  fTerminLoeschen: "حذف الموعد", fAufgabeLoeschen: "حذف المهمة",
+  fSerieLoeschen: "حذف كل التكرارات", fTagLoeschen: "حذف يوم {datum} فقط",
+  eGeloescht: "تم حذف الإدخال.", eTagGeloescht: "تم حذف الإدخال لهذا اليوم.",
   abbrechen: "إلغاء", speichern: "حفظ", schliessen: "إغلاق",
 
   eTitelDatum: "العنوان والتاريخ مطلوبان.",
@@ -759,9 +819,9 @@ ar: {
   eSerienende: "التكرار يحتاج تاريخ انتهاء.",
   eSerieVor: "تاريخ الانتهاء قبل اليوم الأول.",
   eSpeichern: "فشل الحفظ: {code}",
-  eLoeschenFrage: "حذف هذا الإدخال؟",
+  eLoeschenFrage: "حذف الإدخال «{titel}»؟",
   eSerieLoeschen: "حذف كل تكرارات «{titel}»؟\n\nإذا أردت إلغاء هذا اليوم فقط: " +
-                  "ألغِ، ثم اضغط على الإدخال واختر «إلغاء هذا اليوم».",
+                  "ألغِ، ثم اضغط على الإدخال واختر «حذف يوم … فقط».",
 
   kTitel: "مدارات",
   kUnter: "المدار مجموعة تخطط معاً. العائلة، العمل، الزبائن. " +
@@ -771,12 +831,12 @@ ar: {
   kName: "الاسم", kNameBsp: "العائلة، الفريق، الزبائن …",
   kFarbe: "اللون",
   kArt: "النوع",
-  kArtKreis: "مجموعة مفتوحة",
-  kArtStern: "مجموعة خدمات",
+  kArtKreis: "مدار مفتوح",
+  kArtStern: "مدار خدمات",
   kArtHinweis: "مجموعة مفتوحة: الجميع يرون بعضهم ويخططون معاً. للعائلة والفريق. " +
                "مجموعة خدمات: أنت تعرض الأوقات وهم يحجزونها. يرونك أنت فقط ولا " +
                "يرون بعضهم. للطلاب والزبائن والسائقين.",
-  kAnlegen: "إنشاء",
+  kAnlegen: "التالي: أوقات العمل",
   kEinladen: "دعوة",
   kVerwalter: "مشرف",
   kDu: "(أنت)",
@@ -858,7 +918,7 @@ ar: {
   koAbmelden: "تسجيل الخروج",
 
   bTitel: "التشغيل",
-  bUnter: "الحسابات والمدارات. المواعيد والمحتويات غير معروضة هنا عن قصد.",
+  bUnter: "إدارة الحسابات والمجموعات والصلاحيات من مكان واحد.",
   bPersonen: "أشخاص",
   bAktiv7: "نشط، 7 أيام",
   bKreise: "مدارات",
@@ -869,8 +929,7 @@ ar: {
   bSperren: "حظر", bFreigeben: "رفع الحظر",
   bDarfKreise: "إنشاء المدارات",
   bJa: "نعم", bNein: "لا",
-  bHinweis: "الحظر يسري عند التحميل التالي للتطبيق. لإخراج شخص فوراً، عطّل " +
-            "حسابه أيضاً في Firebase Console ضمن Authentication.",
+  bHinweis: "تفرض قواعد قاعدة البيانات حظر الحساب. تُطبّق تغييرات الصلاحيات تلقائياً أثناء الاتصال.",
   bAlleKreise: "كل المدارات التي تراها",
   bOffen: "{n} بانتظار الرد",
   bFehler: "تعذّر التحميل: {code}"

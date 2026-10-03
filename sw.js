@@ -4,8 +4,8 @@
  * Homescreen installieren.
  *
  * Bewusst einfach gehalten:
- *   - Die eigenen Dateien kommen zuerst aus dem Cache, werden aber im
- *     Hintergrund erneuert (stale-while-revalidate).
+ *   - Eigene Dateien werden zuerst vom Server geladen. Ohne Netz
+ *     springt der Cache ein, damit aktuelle Änderungen sichtbar sind.
  *   - Firebase und Google laufen NIE ueber den Cache. Termine muessen
  *     aktuell sein, und Firestore bringt seinen eigenen Zwischenspeicher
  *     mit.
@@ -15,15 +15,24 @@
  * weiter die alte Fassung, egal was auf dem Server liegt.
  */
 
-const VERSION = "orbyx-10";
+const VERSION = "orbyx-16";
 const DATEIEN = [
   "./",
   "./index.html",
   "./app.js",
+  "./startup.js",
+  "./booking.js",
+  "./ui.css",
   "./i18n.js",
+  "./startup.js?v=16",
+  "./app.js?v=16",
+  "./booking.js?v=16",
+  "./ui.css?v=16",
+  "./i18n.js?v=16",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
-  "./icons/icon-512.png"
+  "./icons/icon-512.png",
+  "./icons/icon-512-maskable.png"
 ];
 
 self.addEventListener("install", (ev) => {
@@ -31,7 +40,6 @@ self.addEventListener("install", (ev) => {
     caches.open(VERSION)
       .then((c) => c.addAll(DATEIEN))
       .then(() => self.skipWaiting())
-      .catch((e) => console.log("SW install:", e))
   );
 });
 
@@ -39,7 +47,7 @@ self.addEventListener("activate", (ev) => {
   ev.waitUntil(
     caches.keys()
       .then((namen) => Promise.all(
-        namen.filter((n) => n !== VERSION).map((n) => caches.delete(n))
+        namen.filter((n) => n.startsWith("orbyx-") && n !== VERSION).map((n) => caches.delete(n))
       ))
       .then(() => self.clients.claim())
   );
@@ -51,20 +59,23 @@ self.addEventListener("fetch", (ev) => {
   // Nur eigene Dateien, nur normale Abrufe
   if (ev.request.method !== "GET") return;
   if (url.origin !== self.location.origin) return;
+  if (!DATEIEN.some((datei) => new URL(datei, self.registration.scope).href === url.href)) return;
 
-  ev.respondWith(
-    caches.match(ev.request).then((treffer) => {
-      const ausNetz = fetch(ev.request).then((antwort) => {
-        if (antwort && antwort.status === 200) {
-          const kopie = antwort.clone();
-          caches.open(VERSION).then((c) => c.put(ev.request, kopie));
-        }
-        return antwort;
-      }).catch(() => treffer);
-
-      return treffer || ausNetz;
+  const ausCache = caches.open(VERSION).then((cache) => cache.match(ev.request));
+  const ausNetz = fetch(ev.request).then(async (antwort) => {
+    if (antwort && antwort.status === 200) {
+      const cache = await caches.open(VERSION);
+      await cache.put(ev.request, antwort.clone());
+    }
+    return antwort;
+  });
+  // Die Hintergrundaktualisierung muss den Worker am Leben halten.
+  ev.waitUntil(ausNetz.catch(() => {}));
+  ev.respondWith(ausNetz.catch(() => ausCache).then(antwort => antwort ||
+    new Response("Orbyx ist offline. Bitte erneut versuchen, sobald eine Verbindung besteht.", {
+      status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" }
     })
-  );
+  ));
 });
 
 /* Die App fragt beim Tippen auf das Symbol nach, welche Fassung hier

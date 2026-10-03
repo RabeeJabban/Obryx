@@ -1,0 +1,20 @@
+{
+  "name": "orbyx",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Gemeinsame Kalender, Aufgaben und Terminbuchung",
+  "scripts": {
+    "start": "node tools/serve.cjs",
+    "build:hosting": "node tools/build-hosting.cjs",
+    "test": "node --test tests/*.test.cjs",
+    "test:browser": "node tests/browser.cjs",
+    "test:rules": "node tools/rules.cjs"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "5.0.2",
+    "firebase": "12.19.0",
+    "firebase-tools": "15.32.1",
+    "playwright": "1.62.1"
+  }
+}

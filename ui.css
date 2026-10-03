@@ -1,0 +1,134 @@
+/* Orbyx: ruhige Flächen, klare Aktionen und dieselbe Bedienung auf allen Größen.
+   Höhere Spezifität als die bisherigen Inline-Basisregeln. */
+html:root {
+  --grund: #f4f6fa; --flaeche: #fff; --flaeche2: #f0f3f9;
+  --linie: #e2e7f0; --text: #202a42; --text2: #526079; --text3: #69768b;
+  --akzent: #485be6; --akzentHell: #edf0ff;
+  --rund: 16px; --rund2: 24px;
+  --schatten: 0 4px 20px #23345706;
+}
+body { font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif; }
+body button { transition: background .16s ease, border-color .16s ease, box-shadow .16s ease; }
+body button:disabled { cursor: default; opacity: .55; }
+body button:focus-visible, body input:focus-visible, body select:focus-visible { outline: 3px solid var(--akzent); outline-offset: 3px; }
+#appView header { background: var(--flaeche); padding: 14px 28px; gap: 10px; }
+#appView header .marke b { font-size: 23px; letter-spacing: -.8px; }
+#appView .rundknopf { width: 42px; height: 42px; border-radius: 13px; }
+#appView .rahmen { max-width: 1680px; margin-inline: auto; }
+#appView .haupt { min-width: 0; }
+#appView { min-height: 100dvh; background: var(--grund); background: color-mix(in srgb, var(--orbit-farbe, #64748B) 9%, var(--grund)); }
+#appView .seiteBlock { box-shadow: none; }
+.planAktionen { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 9px; }
+#appView #orbitWerkzeuge { padding: 0; margin: 0; }
+#appView .planKontext { display: flex; gap: 20px; align-items: center; justify-content: space-between; margin: 8px 0 22px; }
+.augenbraue { color: var(--akzent); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; }
+.planIntro h1 { margin: 6px 0; font-size: clamp(25px, 3vw, 34px); line-height: 1.2; letter-spacing: -1px; overflow-wrap: anywhere; }
+.planIntro p { margin: 0; color: var(--text2); font-size: 14px; }
+#appView .kontextNeu { width: auto; min-height: 44px; padding: 12px 20px; white-space: nowrap; }
+#appView .planZahlen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 22px; }
+.planZahl { border: 1px solid var(--linie); background: var(--flaeche); border-radius: 16px; padding: 16px 20px; display: flex; align-items: center; gap: 14px; }
+.planZahl b { font-size: 27px; font-weight: 650; color: var(--akzent); font-variant-numeric: tabular-nums; }
+.planZahl span { font-size: 13px; color: var(--text2); }
+#appView nav.ansichten { border: 1px solid var(--linie); background: var(--flaeche); padding: 5px; border-radius: 14px; gap: 4px; }
+#appView nav.ansichten button { border-radius: 10px; min-height: 42px; }
+#appView nav.ansichten button.an { background: var(--akzent); color: white; }
+#appView .filter { padding-block: 12px 0; }
+#appView .zeitleiste { padding-block: 18px 12px; gap: 10px; }
+#appView .zeitleiste b { font-size: 20px; }
+#appView .pfeil { min-width: 40px; min-height: 40px; border-radius: 12px; }
+#appView #heuteBtn { width: auto; padding-inline: 14px; font-size: 13px; font-weight: 600; }
+#appView .miniKopf .pfeil { min-width: 28px; min-height: 30px; }
+#appView .kreisWahl { display: flex; flex-wrap: wrap; padding: 0 0 14px; gap: 8px; }
+#appView .kreisWahl .chip { min-height: 38px; border-radius: 11px; background: var(--flaeche); }
+#appView .planRolle { border-radius: 16px; box-shadow: var(--schatten); }
+#appView .planName { min-height: 50px; }
+#appView .monat { background: var(--flaeche); border: 1px solid var(--linie); border-radius: 18px; overflow: hidden; }
+#appView .monatZelle { min-height: 92px; }
+#appView .eintrag { box-shadow: none; border-radius: 14px; }
+#appView .plus { width: 54px; height: 54px; box-shadow: 0 8px 28px #485be638; }
+body dialog { max-width: 620px; border: 1px solid var(--linie); }
+body dialog::backdrop { background: #101c3c70; backdrop-filter: blur(5px); }
+body .dlgInhalt { padding: 26px; }
+body dialog h2 { font-size: 25px; letter-spacing: -.6px; }
+body dialog .block { border: 1px solid var(--linie); background: var(--grund); border-radius: 16px; padding: 16px; margin-top: 14px; }
+body dialog .aktionen { position: sticky; bottom: -26px; background: var(--flaeche); padding: 16px 0; margin-top: 14px; z-index: 5; border-top: 1px solid var(--linie); }
+body .knopf { min-height: 44px; border-radius: 12px; }
+body .klein { min-height: 34px; }
+body .hinweis { color: var(--text2); font-size: 12.5px; }
+body input[type=text], body input[type=email], body input[type=time], body input[type=date], body input[type=number], body input[type=search], body textarea, body select {
+  border: 1px solid var(--linie2); border-radius: 10px; background: var(--flaeche); min-height: 42px; padding: 9px 11px; max-width: 100%;
+}
+body .arbeitsTag { display: grid; grid-template-columns: 115px minmax(0, 1fr) 34px; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--linie); }
+.arbeitsTag .schalter { margin: 0; align-self: start; min-height: 42px; }
+.arbeitsTag .reihe { grid-column: 2; gap: 6px; }
+.arbeitsTag .reihe input { width: 100%; min-width: 0; }
+.arbeitsTag > button { grid-column: 3; grid-row: 1; align-self: start; min-height: 42px; width: 34px; }
+body .mitglied { flex-wrap: wrap; }
+.rollenWahl { font-size: 12px; max-width: 170px; }
+body #dlgBetrieb { max-width: 1000px; }
+body .karte { max-width: 440px; padding: 48px 36px; box-shadow: 0 20px 80px #24345a12; }
+#loginView { background: radial-gradient(ellipse at 20% 20%, var(--akzentHell), transparent 65%); }
+@media (min-width: 1000px) {
+  #appView .rahmen { padding: 28px 32px; grid-template-columns: 250px minmax(0, 1fr); gap: 32px; }
+  #appView .seite { top: 100px; }
+  #appView .seiteBlock { background: transparent; border: 0; padding: 12px 4px; }
+  #appView .planRolle { max-height: min(680px, 65dvh); }
+  #appView header .rundknopf:not(#michBtn) { width: auto; padding-inline: 13px; gap: 8px; }
+  #appView header .rundknopf:not(#michBtn)::after { content: attr(aria-label); font-size: 12px; font-weight: 600; }
+  #appView .plus { display: none; }
+}
+@media (max-width: 999px) {
+  #appView .haupt { padding: 18px 16px 75px; }
+  #appView header { padding: 10px 16px; }
+  #appView main, #appView nav, #appView .filter, #appView .zeitleiste { padding-inline: 0; }
+  #appView nav.ansichten { padding: 4px; }
+  #appView .planZahl { padding: 12px; gap: 8px; }
+  #appView .planZahl b { font-size: 23px; }
+  #appView .planZahl span { font-size: 11px; }
+  #appView .kontextNeu { display: none; }
+  #appView .planKontext { margin-bottom: 16px; }
+  #appView .planZahlen { gap: 7px; margin-bottom: 16px; }
+  #appView .monatZelle { min-height: 62px; }
+}
+@media (max-width: 480px) {
+  #appView header { gap: 5px; padding-inline: 12px; }
+  #appView header .rundknopf { width: 38px; height: 40px; }
+  #appView header .marke b { font-size: 20px; }
+  #appView #findenBtn { display: none; }
+  #appView nav.ansichten button { padding-inline: 10px; font-size: 12px; }
+  #appView .zeitleiste b { font-size: 16px; }
+  #appView .planZahl { align-items: start; flex-direction: column; gap: 2px; }
+  body .dlgInhalt { padding: 18px; }
+  body dialog .block { padding: 12px; }
+  body dialog .aktionen { bottom: -18px; }
+  body .arbeitsTag { grid-template-columns: minmax(0, 1fr) 34px; }
+  .arbeitsTag .schalter { grid-column: 1 / -1; }
+  .arbeitsTag .reihe { grid-column: 1; }
+  .arbeitsTag > button { grid-column: 2; grid-row: 2; }
+}
+@media (prefers-color-scheme: dark) {
+  html:root { --grund: #101522; --flaeche: #192131; --flaeche2: #232d41; --linie: #2b364d; --linie2: #43516b;
+    --text: #eff3ff; --text2: #b1bdd4; --text3: #95a4be; --akzent: #9ba9ff; --akzentHell: #283153; }
+  body .knopf:not(.hell):not(.rand), #appView nav.ansichten button.an { color: #101522; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body *, body *::before, body *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+#orbitReiter { max-width: 1680px; margin: 0 auto; padding: 16px 32px 0; }
+.orbitListe { display: flex; gap: 8px; overflow-x: auto; padding: 4px 3px 10px; scrollbar-width: thin; }
+.orbitReiter { flex: 0 0 auto; display: flex; align-items: center; gap: 9px; min-height: 48px; padding: 12px 18px;
+  color: var(--text2); background: var(--flaeche); border: 1px solid var(--linie); border-radius: 12px; font-size: 14px; white-space: nowrap; }
+.orbitReiter.an { color: var(--text); border-color: var(--orbit-farbe); font-weight: 650;
+  background: color-mix(in srgb, var(--orbit-farbe) 13%, var(--flaeche)); box-shadow: inset 0 -3px var(--orbit-farbe); }
+@media (max-width: 999px) { #orbitReiter { padding: 12px 16px 0; } }
+.rechteArten { display: grid; gap: 5px; margin-block: 8px 18px; }
+.eintragEntfernen, .eintragSpeichern { display: flex; flex-wrap: wrap; gap: 9px; }
+body dialog .eintragAktionen { flex-direction: column; gap: 12px; }
+.eintragEntfernen .knopf { flex: 1; min-width: 180px; }
+body .knopf.rand.gefahr { color: var(--rot); border-color: var(--rot); }
+body .knopf.rand.gefahr:hover { background: var(--rotHell); }
+.eintragKopf { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  position: sticky; top: -26px; z-index: 6; background: var(--flaeche); padding-block: 8px 12px; margin-bottom: 4px; }
+body dialog .eintragKopf h2 { margin: 0; flex: 1; min-width: 160px; }
+.eintragKopf .knopf { width: auto; font-size: 13px; padding: 10px 14px; }
+@media (max-width: 480px) { .eintragKopf { top: -18px; } }

@@ -1,0 +1,488 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ================= HILFEN =================
+    function angemeldet() {
+      return request.auth != null && (!exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('aktiv', true) != false);
+    }
+    function vollzugriff() {
+      return istBetreiber() || (angemeldet() && (!exists(/databases/$(database)/documents/users/$(meineUid()))
+        || get(/databases/$(database)/documents/users/$(meineUid())).data.get('vollzugriff', true) != false));
+    }
+    function darfKreiseAnlegen() {
+      return istBetreiber() || (vollzugriff() && (!exists(/databases/$(database)/documents/users/$(meineUid()))
+        || get(/databases/$(database)/documents/users/$(meineUid())).data.get('darfKreiseAnlegen', true) != false));
+    }
+    function meineUid()    { return request.auth.uid; }
+    function meineMail()   { return request.auth.token.email.lower(); }
+
+    // Dieselbe Liste wie BETREIBER oben in app.js.
+    // Kommt eine Adresse dazu, muss sie an BEIDEN Stellen stehen.
+    function istBetreiber() {
+      return angemeldet() && request.auth.token.email_verified == true && meineMail() in [
+        'rabea.jabban.mrj@gmail.com'
+      ];
+    }
+
+    function kreis(id) {
+      return get(/databases/$(database)/documents/kreise/$(id)).data;
+    }
+
+    // get() auf ein Dokument, das es nicht gibt, bricht die Pruefung ab,
+    // und abgebrochen heisst permission-denied fuer die GANZE Abfrage.
+    // Das passiert schon beim Anlegen: die App sieht den neuen Orbit
+    // sofort, der Server kennt ihn erst eine Umdrehung spaeter.
+    // Deshalb steht vor jedem get() ein exists().
+    function kreisDa(id) {
+      return id is string && id != ''
+             && exists(/databases/$(database)/documents/kreise/$(id));
+    }
+    function binMitglied(id) {
+      return angemeldet() && kreisDa(id)
+             && (istBetreiber() || meineUid() in kreis(id).get('mitglieder', []));
+    }
+    function binVerwalter(id) {
+      return angemeldet() && kreisDa(id)
+             && (istBetreiber() || meineUid() in kreis(id).get('verwalter', []));
+    }
+
+    function binPlaner(id) {
+      return binVerwalter(id) || (binMitglied(id) && (
+        meineUid() in kreis(id).get('planer', [])
+        || (kreis(id).get('art', 'kreis') != 'stern'
+          && kreis(id).get('rechte', {}).get(meineUid(), {}).get('planen', true) == true)));
+    }
+    function darfEinladen(id) {
+      return binVerwalter(id) || (binMitglied(id)
+        && kreis(id).get('rechte', {}).get(meineUid(), {}).get('einladen', false) == true);
+    }
+    function darfArt(id, name) {
+      return binPlaner(id) || (binMitglied(id)
+        && (kreis(id).get('rechte', {}).get(meineUid(), {}).get('terminarten', null) == null
+          || name in kreis(id).rechte[meineUid()].terminarten));
+    }
+    function meineBuchung(e) {
+      return e.get('slotId', '') != '' && (e.get('participantUid', '') == meineUid()
+        || (e.get('zugewiesen', []).size() == 1 && meineUid() in e.zugewiesen));
+    }
+    function verwalteEintrag(e) {
+      return istBetreiber() || e.get('ownerId', '') == meineUid() || planEintrag(e);
+    }
+    function planEintrag(daten) {
+      return daten.get('kreisIds', []).size() == 1 && binPlaner(daten.kreisIds[0]);
+    }
+    function nurEigeneListe(feld) {
+      let alt = resource.data.get(feld, []).toSet();
+      let neu = request.resource.data.get(feld, []).toSet();
+      return alt.difference(neu).hasOnly([meineUid()]) && neu.difference(alt).hasOnly([meineUid()]);
+    }
+    function nurEigeneInfo() {
+      return request.resource.data.get('info', {}).diff(resource.data.get('info', {})).affectedKeys().hasOnly([meineUid()]);
+    }
+    function nurEigeneRechte() {
+      return request.resource.data.get('rechte', {}).diff(resource.data.get('rechte', {})).affectedKeys().hasOnly([meineUid()]);
+    }
+    function eingeladeneRechte(id) {
+      let ein = get(/databases/$(database)/documents/einladungen/$(id + '_' + meineMail())).data;
+      return nurEigeneRechte() && request.resource.data.get('rechte', {}).get(meineUid(), {})
+        == ein.get('rechte', {'einladen': false, 'planen': ein.get('art', 'kreis') != 'stern', 'terminarten': null});
+    }
+    function gueltigeRollen() {
+      let neu = request.resource.data;
+      return (istBetreiber() || neu.erstellerId == resource.data.erstellerId)
+        && neu.get('verwalter', []).toSet().hasAll([neu.erstellerId])
+        && neu.get('mitglieder', []).toSet().hasAll(neu.get('verwalter', []))
+        && neu.get('mitglieder', []).toSet().hasAll(neu.get('planer', []));
+    }
+    function einladungsZugang() {
+      let id = request.resource.data.get('zugangEinladung', '');
+      let ein = get(/databases/$(database)/documents/einladungen/$(id)).data;
+      return request.auth.token.email_verified == true && ein.email == meineMail()
+        && ein.get('vollzugriff', null) is bool
+        && request.resource.data.vollzugriff == ein.vollzugriff
+        && request.resource.data.darfKreiseAnlegen == (ein.get('darfKreiseAnlegen', false) == true && ein.vollzugriff)
+        && meineUid() in getAfter(/databases/$(database)/documents/kreise/$(ein.kreisId)).data.mitglieder;
+    }
+
+    // Ein fehlendes Feld bricht die ganze Regelpruefung ab, und dann
+    // schlaegt die KOMPLETTE Abfrage fehl, nicht nur ein Dokument.
+    // Deshalb steht bei optionalen Feldern ueberall .get(feld, standard).
+
+    // ================= OEFFENTLICHES PROFIL =================
+    // Hier steht KEINE E-Mail. Name und Bild reichen fuer die Anzeige,
+    // und sie stehen ohnehin im jeweiligen Kreis.
+    match /users/{userId} {
+      allow read: if request.auth != null && (meineUid() == userId || istBetreiber());
+
+      // Die zwei Schalter aktiv und darfKreiseAnlegen darf man NICHT
+      // selbst setzen, sonst koennte sich ein gesperrtes Konto
+      // einfach wieder freischalten.
+      allow create: if angemeldet() && meineUid() == userId
+                    && !request.resource.data.keys()
+                        .hasAny(['aktiv', 'darfKreiseAnlegen', 'vollzugriff', 'zugangEinladung']);
+      allow update: if angemeldet() && meineUid() == userId
+                    && !request.resource.data.diff(resource.data)
+                        .affectedKeys().hasAny(['aktiv', 'darfKreiseAnlegen', 'vollzugriff', 'zugangEinladung']);
+
+      allow update: if angemeldet() && meineUid() == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vollzugriff', 'darfKreiseAnlegen', 'zugangEinladung'])
+        && einladungsZugang();
+
+      // Nur der Betreiber sperrt und gibt frei, und auch nur das.
+      allow update: if istBetreiber()
+                    && request.resource.data.diff(resource.data)
+                       .affectedKeys().hasOnly(['aktiv', 'darfKreiseAnlegen', 'vollzugriff', 'zugangEinladung']);
+    }
+
+    // ================= PRIVATES PROFIL =================
+    // Nur die E-Mail. Liest man selbst, und der Betreiber.
+    match /users_privat/{userId} {
+      allow read:  if angemeldet() && (meineUid() == userId || istBetreiber());
+      allow write: if angemeldet() && meineUid() == userId;
+    }
+
+    // ================= KREISE =================
+    match /kreise/{kreisId} {
+      allow read: if angemeldet() && (istBetreiber() || meineUid() in resource.data.get('mitglieder', []));
+
+      // Anlegen: man macht sich selbst zum Mitglied und Verwalter
+      allow create: if angemeldet() && darfKreiseAnlegen()
+                    && request.resource.data.erstellerId == meineUid()
+                    && meineUid() in request.resource.data.get('mitglieder', [])
+                    && meineUid() in request.resource.data.get('verwalter', []);
+
+      // Aendern: Verwalter duerfen alles, auch Arbeitszeiten und Terminarten
+      allow update: if angemeldet()
+                    && (istBetreiber() || meineUid() in resource.data.get('verwalter', []))
+                    && gueltigeRollen();
+
+      // Verlassen: sich selbst austragen darf jedes Mitglied
+      allow update: if angemeldet()
+                    && meineUid() in resource.data.get('mitglieder', [])
+                    && !(meineUid() in request.resource.data.get('mitglieder', []))
+                    && resource.data.erstellerId != meineUid()
+                    && request.resource.data.diff(resource.data)
+                       .affectedKeys().hasOnly(['mitglieder', 'info', 'verwalter', 'planer', 'rechte'])
+                    && nurEigeneRechte()
+                    && nurEigeneListe('mitglieder') && nurEigeneListe('verwalter') && nurEigeneListe('planer') && nurEigeneInfo();
+
+      // Seinen eigenen Namen im Kreis darf jedes Mitglied aendern
+      allow update: if angemeldet()
+                    && meineUid() in resource.data.get('mitglieder', [])
+                    && request.resource.data.diff(resource.data)
+                       .affectedKeys().hasOnly(['info']) && nurEigeneInfo();
+
+      // Beitreten: wer eingeladen wurde, darf sich selbst eintragen.
+      // Die Einladung hat eine feste Kennung aus Kreis und E-Mail,
+      // deshalb kann die Regel sie direkt nachschlagen. Ohne diesen
+      // Kniff koennte jeder beitreten, der eine Kreis-Kennung erraet.
+      allow update: if angemeldet()
+                    && !(meineUid() in resource.data.get('mitglieder', []))
+                    && meineUid() in request.resource.data.get('mitglieder', [])
+                    && request.resource.data.diff(resource.data)
+                       .affectedKeys().hasOnly(['mitglieder', 'info', 'verwalter', 'planer', 'rechte'])
+                    && eingeladeneRechte(kreisId)
+                    && nurEigeneListe('mitglieder') && nurEigeneListe('verwalter') && nurEigeneListe('planer') && nurEigeneInfo()
+                    && request.auth.token.email_verified == true
+                    && exists(/databases/$(database)/documents/einladungen/$(kreisId + '_' + meineMail()))
+                    && (!(meineUid() in request.resource.data.get('planer', []))
+                      || get(/databases/$(database)/documents/einladungen/$(kreisId + '_' + meineMail())).data.get('alsPlaner', false) == true)
+                    && (
+                      !(meineUid() in request.resource.data.get('verwalter', []))
+                      || get(/databases/$(database)/documents/einladungen/$(kreisId + '_' + meineMail()))
+                           .data.get('alsVerwalter', false) == true
+                    );
+
+      allow delete: if angemeldet()
+                    && (istBetreiber() || resource.data.get('erstellerId', '') == meineUid());
+    }
+
+    // ================= NAME UND MAIL IM KREIS =================
+    // Kennung ist immer kreisId + "_" + uid.
+    // Lesen darf sie nur der Verwalter des Kreises und die Person selbst.
+    // Deshalb sehen Mitglieder die Adressen der anderen nicht.
+    match /kreisinfo/{infoId} {
+      allow read: if angemeldet() && (
+                    resource.data.get('uid', '') == meineUid()
+                    || binVerwalter(resource.data.get('kreisId', ''))
+                  );
+
+      allow create, update: if angemeldet()
+                            && request.resource.data.uid == meineUid()
+                            && infoId == request.resource.data.kreisId + '_' + meineUid()
+                            && binMitglied(request.resource.data.kreisId);
+
+      allow delete: if angemeldet() && (
+                      resource.data.get('uid', '') == meineUid()
+                      || !kreisDa(resource.data.get('kreisId', ''))
+                      || binVerwalter(resource.data.get('kreisId', ''))
+                    );
+    }
+
+    // ================= EINLADUNGEN =================
+    match /einladungen/{einladungId} {
+      allow read: if angemeldet() && (
+                    resource.data.get('email', '') == meineMail()
+                    || darfEinladen(resource.data.get('kreisId', ''))
+                  );
+
+      allow create, update: if angemeldet()
+                    && (!request.resource.data.keys().hasAny(['vollzugriff', 'darfKreiseAnlegen']) || istBetreiber())
+                    && request.resource.data.vonUid == meineUid()
+                    && darfEinladen(request.resource.data.kreisId)
+                    && (binVerwalter(request.resource.data.kreisId) || (
+                      request.resource.data.get('alsVerwalter', false) == false
+                      && request.resource.data.get('alsPlaner', false) == false
+                      && request.resource.data.get('rechte', {}).get('einladen', false) == false
+                      && request.resource.data.get('rechte', {}).get('planen', false) == false))
+                    && einladungId == request.resource.data.kreisId + '_' + request.resource.data.email
+                    && request.resource.data.email == request.resource.data.email.lower();
+
+      allow delete: if angemeldet() && (
+                      resource.data.get('email', '') == meineMail()
+                      || !kreisDa(resource.data.get('kreisId', ''))
+                      || darfEinladen(resource.data.get('kreisId', ''))
+                    );
+    }
+
+    // ================= ZEITFENSTER =================
+    // Nur fuer Kreise, in denen ein Fenster genau einer Person gehoert.
+    // Kennung ist kreisId + "_" + Datum + "_" + Uhrzeit + "_" + Platz.
+    // Der Platz macht aus dem Einzeltermin eine Tour mit vier Fahrern:
+    // vier Plaetze, vier Dokumente, jedes nur einmal vergeben.
+    //
+    // Der ganze Trick steht in diesen drei Zeilen: create gelingt in
+    // Firestore NUR, wenn das Dokument noch nicht existiert, und update
+    // ist verboten. Damit kann kein zweiter dieselbe Stunde nehmen,
+    // auch nicht in derselben Sekunde. Das entscheidet die Datenbank,
+    // nicht die App, und laesst sich deshalb nicht austricksen.
+    match /slots/{slotId} {
+      allow get: if angemeldet() && binMitglied(slotId.split('_')[0]);
+      allow list: if angemeldet() && binMitglied(resource.data.get('kreisId', ''));
+
+      allow create: if angemeldet()
+                    && request.resource.data.uid == meineUid()
+                    && binMitglied(request.resource.data.kreisId)
+                    && slotId == request.resource.data.kreisId + '_'
+                               + request.resource.data.datum + '_'
+                               + request.resource.data.start + '_'
+                               + string(request.resource.data.platz);
+
+      allow update: if angemeldet() && binPlaner(resource.data.kreisId)
+        && resource.data.get('entryId', '') != ''
+        && !existsAfter(/databases/$(database)/documents/eintraege/$(resource.data.entryId))
+        && request.resource.data.uid == meineUid() && request.resource.data.kreisId == resource.data.kreisId
+        && slotId == request.resource.data.kreisId + '_' + request.resource.data.datum + '_' + request.resource.data.start + '_' + string(request.resource.data.platz)
+        && getAfter(/databases/$(database)/documents/eintraege/$(request.resource.data.entryId)).data.slotId == slotId;
+
+      allow delete: if angemeldet()
+        && (resource.data.get('sessionId', '') == '' || !existsAfter(/databases/$(database)/documents/eintraege/$(resource.data.entryId))) && (
+                      resource.data.get('uid', '') == meineUid()
+                      || resource.data.get('participantUid', '') == meineUid()
+                      || binPlaner(resource.data.get('kreisId', ''))
+                    );
+    }
+
+    // ================= EINTRAEGE =================
+    match /eintraege/{eintragId} {
+      function zeitGesperrt(uid, e, minute) {
+        return getAfter(/databases/$(database)/documents/zeitsperren/$(uid + '_' + e.datum + '_' + string(minute))).data.sessionId == e.sessionId;
+      }
+      function gueltigeBuchung(e) {
+        let s = getAfter(/databases/$(database)/documents/sitzungen/$(e.sessionId)).data;
+        return s.seats[eintragId] == e.participantUid && s.providerUid == e.providerUid
+          && s.datum == e.datum && s.von == e.von && s.bis == e.bis && e.dauer == e.bis - e.von
+          && e.kreisIds == [s.kreisId] && e.artName == s.artName
+          && e.teilnehmer.toSet() == [s.providerUid, e.participantUid].toSet()
+          && e.participantUid in kreis(s.kreisId).mitglieder
+          && (e.participantUid == meineUid() || binPlaner(s.kreisId))
+          && zeitGesperrt(e.providerUid, e, e.von - e.von % 5)
+          && zeitGesperrt(e.providerUid, e, e.bis - 1 - (e.bis - 1) % 5)
+          && zeitGesperrt(e.participantUid, e, e.von - e.von % 5)
+          && zeitGesperrt(e.participantUid, e, e.bis - 1 - (e.bis - 1) % 5)
+          && existsAfter(/databases/$(database)/documents/slots/$(e.slotId));
+      }
+      allow read: if angemeldet() && (istBetreiber() || planEintrag(resource.data) || resource.data.get('ownerId', '') == meineUid()
+        || meineUid() in resource.data.get('sichtbarFuer', []));
+      allow create: if angemeldet() && request.resource.data.ownerId == meineUid()
+        && (request.resource.data.get('sessionId', '') == '' || gueltigeBuchung(request.resource.data))
+        && (vollzugriff() || planEintrag(request.resource.data)
+          || (request.resource.data.get('typ', '') == 'termin' && request.resource.data.get('kreisIds', []).size() == 1
+            && binMitglied(request.resource.data.kreisIds[0]) && request.resource.data.get('zugewiesen', []).size() == 0));
+      allow update: if angemeldet() && resource.data.get('sessionId', '') == '' && request.resource.data.ownerId == resource.data.ownerId
+        && (istBetreiber() || resource.data.ownerId == meineUid()
+          || (planEintrag(resource.data) && request.resource.data.get('kreisIds', []) == resource.data.get('kreisIds', [])));
+      allow update: if angemeldet() && resource.data.get('sessionId', '') != '' && planEintrag(resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['titel', 'ort', 'notiz', 'suchtext', 'sichtbarFuer']);
+      allow delete: if angemeldet() && (verwalteEintrag(resource.data) || meineBuchung(resource.data))
+        && (resource.data.get('sessionId', '') == '' ||
+          ((!existsAfter(/databases/$(database)/documents/sitzungen/$(resource.data.sessionId))
+            || !(eintragId in getAfter(/databases/$(database)/documents/sitzungen/$(resource.data.sessionId)).data.seats))
+            && (!existsAfter(/databases/$(database)/documents/slots/$(resource.data.slotId))
+              || (planEintrag(resource.data) && getAfter(/databases/$(database)/documents/slots/$(resource.data.slotId)).data.entryId != eintragId))));
+      allow update: if angemeldet() && meineUid() in resource.data.get('zugewiesen', [])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['zusagen'])
+        && request.resource.data.get('zusagen', {}).diff(resource.data.get('zusagen', {})).affectedKeys().hasOnly([meineUid()])
+        && request.resource.data.zusagen[meineUid()] in ['ja', 'nein'];
+    }
+
+    // ================= BELEGTE ZEITEN =================
+    // Schattenkalender ohne Titel und Notiz. Nur Datum und Uhrzeit.
+    // Dadurch sehen Kreis-Mitglieder, WANN jemand belegt ist,
+    // aber nicht WOMIT.
+    //
+    // Hier traegt sich auch ein, wem ein Termin zugewiesen wurde:
+    // in fremde Kalender darf niemand schreiben, also setzt die App
+    // des Zugewiesenen den Block selbst, mit ownerId gleich sich selbst.
+    match /belegt/{belegtId} {
+      function geplanterSchatten() {
+        let ein = getAfter(/databases/$(database)/documents/eintraege/$(belegtId)).data;
+        return planEintrag(ein) && request.resource.data.ownerId == ein.ownerId;
+      }
+      allow read: if angemeldet() && (istBetreiber() || resource.data.get('ownerId', '') == meineUid()
+        || meineUid() in resource.data.get('sichtbarFuer', []));
+      allow create: if angemeldet() && (request.resource.data.ownerId == meineUid() || istBetreiber() || geplanterSchatten());
+      allow update: if angemeldet() && request.resource.data.ownerId == resource.data.ownerId
+        && (resource.data.ownerId == meineUid() || istBetreiber() || geplanterSchatten());
+      allow delete: if angemeldet() && (resource.data.get('ownerId', '') == meineUid() || istBetreiber()
+        || (exists(/databases/$(database)/documents/eintraege/$(belegtId))
+          && (planEintrag(get(/databases/$(database)/documents/eintraege/$(belegtId)).data)
+            || meineBuchung(get(/databases/$(database)/documents/eintraege/$(belegtId)).data))));
+    }
+
+    // One session owns the provider's time; several seats share that session.
+    match /zeitfreigaben/{kennung} {
+      allow get: if angemeldet() && resource.data.get('leserUid', '') == meineUid();
+      allow create, update: if angemeldet() && request.resource.data.leserUid == meineUid()
+        && kennung == request.resource.data.uid + '_' + meineUid()
+        && binMitglied(request.resource.data.kreisId)
+        && request.resource.data.uid in kreis(request.resource.data.kreisId).mitglieder;
+      allow delete: if angemeldet() && resource.data.leserUid == meineUid();
+    }
+    match /zeitstatus/{kennung} {
+      function darfZeitLesen(uid) {
+        let freigabe = /databases/$(database)/documents/zeitfreigaben/$(uid + '_' + meineUid());
+        return uid == meineUid() || istBetreiber() || (exists(freigabe)
+          && binMitglied(get(freigabe).data.kreisId) && uid in kreis(get(freigabe).data.kreisId).mitglieder);
+      }
+      function passend(d) {
+        let e = getAfter(/databases/$(database)/documents/eintraege/$(d.eintragId)).data;
+        return kennung == d.eintragId + '_' + d.uid && verwalteEintrag(e)
+          && d.uid in e.get('teilnehmer', [e.ownerId]) && d.datum == e.datum
+          && d.von is int && d.bis is int && d.von >= 0 && d.bis <= 1440 && d.bis > d.von
+          && d.token == e.get('token', 'privat~' + d.eintragId)
+          && d.wiederholung == e.get('wiederholung', 'einmal')
+          && d.get('serie', {}) == e.get('serie', {})
+          && d.keys().hasOnly(['uid', 'eintragId', 'datum', 'von', 'bis', 'token', 'wiederholung', 'serie']);
+      }
+      allow read: if angemeldet() && darfZeitLesen(resource.data.uid);
+      allow create, update: if angemeldet() && passend(request.resource.data);
+      allow delete: if angemeldet() && (verwalteEintrag(get(/databases/$(database)/documents/eintraege/$(resource.data.eintragId)).data)
+        || meineBuchung(get(/databases/$(database)/documents/eintraege/$(resource.data.eintragId)).data));
+    }
+
+    match /sitzungen/{sitzungId} {
+      function passendeArt(s) {
+        let angebot = kreis(s.kreisId).get('angebote', {}).get(s.artName, {});
+        return s.von is int && s.bis is int && s.von >= 0 && s.bis <= 1440 && s.bis > s.von
+          && s.capacity is int && s.capacity >= 1 && s.capacity <= angebot.get('plaetze', 0)
+          && s.bis - s.von == angebot.get('dauer', 0)
+          && s.providerUid == angebot.get('providerUid', '')
+          && s.seats.size() <= s.capacity;
+      }
+      function platzAnlegen(s) {
+        let e = getAfter(/databases/$(database)/documents/eintraege/$(s.aktionId)).data;
+        return e.sessionId == sitzungId && e.ownerId == meineUid()
+          && e.participantUid == s.seats[s.aktionId]
+          && e.providerUid == s.providerUid && e.datum == s.datum
+          && (e.participantUid == meineUid() || binPlaner(s.kreisId));
+      }
+      function platzEntfernen(s) {
+        let e = get(/databases/$(database)/documents/eintraege/$(s.aktionId)).data;
+        return !existsAfter(/databases/$(database)/documents/eintraege/$(s.aktionId))
+          && (verwalteEintrag(e) || meineBuchung(e));
+      }
+      allow get: if angemeldet() && binMitglied(sitzungId.split('~')[0]);
+      allow list: if false;
+      allow create: if angemeldet() && darfArt(request.resource.data.kreisId, request.resource.data.artName)
+        && passendeArt(request.resource.data) && request.resource.data.seats.size() == 1
+        && platzAnlegen(request.resource.data);
+      allow update: if angemeldet() && binMitglied(resource.data.kreisId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seats', 'aktionId', 'capacity'])
+        && request.resource.data.seats.diff(resource.data.seats).affectedKeys().hasOnly([request.resource.data.aktionId])
+        && ((request.resource.data.seats.size() == resource.data.seats.size() + 1
+          && darfArt(resource.data.kreisId, resource.data.artName)
+          && passendeArt(request.resource.data) && platzAnlegen(request.resource.data)
+          && !(request.resource.data.seats[request.resource.data.aktionId] in resource.data.seats.values()))
+          || (request.resource.data.seats.size() == resource.data.seats.size() - 1
+            && request.resource.data.capacity == resource.data.capacity && platzEntfernen(request.resource.data)));
+      allow delete: if angemeldet() && binMitglied(resource.data.kreisId) && resource.data.seats.size() == 1
+        && !existsAfter(/databases/$(database)/documents/eintraege/$(resource.data.seats.keys()[0]))
+        && (verwalteEintrag(get(/databases/$(database)/documents/eintraege/$(resource.data.seats.keys()[0])).data)
+          || meineBuchung(get(/databases/$(database)/documents/eintraege/$(resource.data.seats.keys()[0])).data));
+    }
+
+    // Deterministic five-minute locks arbitrate concurrent bookings across orbits.
+    // No titles, notes or addresses are stored in these documents.
+    match /zeitsperren/{kennung} {
+      function gebuchteSperre(d) {
+        let s = getAfter(/databases/$(database)/documents/sitzungen/$(d.sessionId)).data;
+        let e = getAfter(/databases/$(database)/documents/eintraege/$(s.aktionId)).data;
+        return d.kreisId == s.kreisId && d.datum == s.datum
+          && d.minute >= s.von - 4 && d.minute < s.bis
+          && (d.uid == s.providerUid || d.uid == e.participantUid)
+          && e.ownerId == meineUid() && (e.participantUid == meineUid() || binPlaner(s.kreisId));
+      }
+      function privateSperre(d) {
+        let e = getAfter(/databases/$(database)/documents/eintraege/$(d.entryId)).data;
+        return d.sessionId == 'privat~' + d.entryId && verwalteEintrag(e)
+          && d.uid in e.get('teilnehmer', [e.ownerId]);
+      }
+      function gueltigeSperre(d) {
+        return d.minute is int && d.minute >= 0 && d.minute < 1440 && d.minute % 5 == 0
+          && kennung == d.uid + '_' + d.datum + '_' + string(d.minute)
+          && (d.sessionId == 'privat~' + d.entryId ? privateSperre(d) : gebuchteSperre(d));
+      }
+      function darfFreigeben(d) {
+        return d.sessionId == 'privat~' + d.entryId
+          ? verwalteEintrag(get(/databases/$(database)/documents/eintraege/$(d.entryId)).data)
+          : (d.entryId != ''
+            ? (verwalteEintrag(get(/databases/$(database)/documents/eintraege/$(d.entryId)).data)
+              || meineBuchung(get(/databases/$(database)/documents/eintraege/$(d.entryId)).data))
+            : (!existsAfter(/databases/$(database)/documents/sitzungen/$(d.sessionId)) && binMitglied(d.kreisId)));
+      }
+      allow read: if false;
+      allow create: if angemeldet() && gueltigeSperre(request.resource.data);
+      allow update: if angemeldet() && (request.resource.data.sessionId == resource.data.sessionId
+        || (resource.data.sessionId != 'privat~' + resource.data.entryId &&
+          (resource.data.entryId == '' ? !existsAfter(/databases/$(database)/documents/sitzungen/$(resource.data.sessionId))
+            : !existsAfter(/databases/$(database)/documents/eintraege/$(resource.data.entryId)))))
+        && gueltigeSperre(request.resource.data);
+      allow delete: if angemeldet() && darfFreigeben(resource.data);
+    }
+
+    // ================= NACHRICHTEN =================
+    match /nachrichten/{nachrichtId} {
+      allow read, delete: if angemeldet() && (
+                            resource.data.get('anUid', '') == meineUid()
+                            || resource.data.get('vonUid', '') == meineUid()
+                          );
+
+      allow create: if angemeldet()
+                    && request.resource.data.vonUid == meineUid()
+                    && request.resource.data.anUid is string;
+
+      allow update: if angemeldet()
+                    && resource.data.get('anUid', '') == meineUid()
+                    && request.resource.data.diff(resource.data)
+                       .affectedKeys().hasOnly(['gelesen']);
+    }
+
+    // ================= ALLES ANDERE =================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

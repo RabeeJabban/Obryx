@@ -14,6 +14,7 @@
   <meta name="theme-color" content="#F6F8FB" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0D131C" media="(prefers-color-scheme: dark)">
   <meta name="description" content="Orbyx – organize your chaos">
+<link rel="stylesheet" href="ui.css?v=16">
 
 <style>
 /* ===================================================================
@@ -611,8 +612,8 @@ main {
 /* Schlanke Fassung für reine Buchende: kein Filter, keine offenen
    Aufgaben, keine Reiterleiste. Nur die Gruppe und ihre freien Zeiten. */
 body.schlank #filter,
-body.schlank #seiteOffenBlock,
-body.schlank nav.ansichten { display: none; }
+body.schlank #seiteOffenBlock { display: none; }
+body.schlank nav.ansichten { display: flex; }
 dialog {
   border: 0; padding: 0; background: var(--flaeche); color: var(--text);
   width: 100%; max-width: 540px; max-height: 92dvh;
@@ -737,8 +738,8 @@ td.n { color: var(--text2); white-space: nowrap; }
   <div class="karte">
     <svg width="96" height="96" aria-hidden="true"><use href="#mark"/></svg>
     <h1>Orbyx</h1>
-    <p data-i18n="spruch"></p>
-    <button class="knopf" id="loginBtn" data-i18n="anmelden"></button>
+    <p data-i18n="spruch">Organisiere deinen Alltag.</p>
+    <button class="knopf" id="loginBtn" data-i18n="anmelden">Mit Google anmelden</button>
     <div id="loginFehler" class="fehler"></div>
     <div class="sprachwahl" id="sprachwahl"></div>
   </div>
@@ -789,6 +790,7 @@ td.n { color: var(--text2); white-space: nowrap; }
     <button class="rundknopf" id="michBtn" data-i18n-al="konto"><img id="photo" alt=""></button>
   </header>
 
+  <nav id="orbitReiter" aria-label="Orbits"></nav>
   <div class="rahmen">
   <aside class="seite" id="seite">
     <div class="seiteBlock">
@@ -798,10 +800,6 @@ td.n { color: var(--text2); white-space: nowrap; }
         <button type="button" class="pfeil klein2" id="miniVor">&#8250;</button>
       </div>
       <div class="miniGitter" id="miniGitter"></div>
-    </div>
-    <div class="seiteBlock">
-      <label data-i18n="kTitel"></label>
-      <div class="seiteOrbits" id="seiteOrbits"></div>
     </div>
     <div class="seiteBlock" id="seiteOffenBlock">
       <label data-i18n="dsOffen"></label>
@@ -814,6 +812,15 @@ td.n { color: var(--text2); white-space: nowrap; }
   </aside>
 
   <div class="haupt">
+  <section class="planKontext" aria-labelledby="planTitel">
+    <div class="planIntro"><span class="augenbraue" id="planArt"></span>
+      <h1 id="planTitel"></h1><p id="planUnter"></p></div>
+    <div class="planAktionen">
+      <div class="kreisWahl" id="orbitWerkzeuge"></div>
+      <button type="button" class="knopf kontextNeu" id="kontextNeu" data-i18n="neuerEintrag"></button>
+    </div>
+  </section>
+  <div class="planZahlen" id="planZahlen"></div>
   <nav class="ansichten" id="nav">
     <button data-v="tag" class="an" data-i18n="vTag"></button>
     <button data-v="woche" data-i18n="vWoche"></button>
@@ -832,7 +839,7 @@ td.n { color: var(--text2); white-space: nowrap; }
   <div class="zeitleiste" id="zeitleiste">
     <button class="pfeil" id="zurueck" data-i18n-al="zurueck">&#8249;</button>
     <div class="mitteBlock"><b id="zeitTitel"></b><div class="unter" id="zeitUnter"></div></div>
-    <button class="pfeil" id="heuteBtn" data-i18n-al="heute">&#9679;</button>
+    <button class="pfeil" id="heuteBtn" data-i18n="heute"></button>
     <button class="pfeil" id="vor" data-i18n-al="weiter">&#8250;</button>
   </div>
 
@@ -861,7 +868,10 @@ td.n { color: var(--text2); white-space: nowrap; }
 <!-- =============== EINTRAG =============== -->
 <dialog id="dlgEintrag">
   <form id="formEintrag" class="dlgInhalt">
-    <h2 id="dlgTitel"></h2>
+    <div class="eintragKopf">
+      <h2 id="dlgTitel"></h2>
+      <button type="button" class="knopf rand gefahr versteckt" id="eintragLoeschenBtn"></button>
+    </div>
     <p class="dlgUnter" id="dlgUnter"></p>
 
     <div class="wahl">
@@ -926,11 +936,14 @@ td.n { color: var(--text2); white-space: nowrap; }
     </div>
 
     <div id="formFehler" class="fehler"></div>
-    <button type="button" class="knopf rand versteckt" id="absagenBtn" style="margin-top:16px"></button>
-
-    <div class="aktionen">
-      <button type="button" class="knopf hell" id="abbrechen" data-i18n="abbrechen"></button>
-      <button type="submit" class="knopf" data-i18n="speichern"></button>
+    <div class="aktionen eintragAktionen">
+      <div class="eintragEntfernen versteckt" id="eintragEntfernen">
+        <button type="button" class="knopf rand versteckt" id="absagenBtn"></button>
+      </div>
+      <div class="eintragSpeichern">
+        <button type="button" class="knopf hell" id="abbrechen" data-i18n="abbrechen"></button>
+        <button type="submit" class="knopf" data-i18n="speichern"></button>
+      </div>
     </div>
   </form>
 </dialog>
@@ -986,16 +999,8 @@ td.n { color: var(--text2); white-space: nowrap; }
       <p class="schrittNr" data-i18n="kSchritt1"></p>
       <label data-i18n="kZeiten"></label>
       <div id="zeitenListe"></div>
-      <div class="tageWahl" id="eZeitTage" style="margin-top:8px"></div>
-      <div class="reihe" style="margin-top:8px">
-        <div><label for="eZeitVon" data-i18n="fVon"></label>
-             <input type="time" id="eZeitVon" value="17:00"></div>
-        <div><label for="eZeitBis" data-i18n="fBis"></label>
-             <input type="time" id="eZeitBis" value="22:00"></div>
-      </div>
-      <button type="button" class="klein" id="zeitHinzu" style="margin-top:8px" data-i18n="kZeitHinzu"></button>
       <div class="blockMeldung" id="zeitMeldung"></div>
-      <p class="hinweis" data-i18n="kZeitenHinweis"></p>
+      <p class="hinweis" data-i18n="kZeitenProTag"></p>
     </div>
 
     <div class="block">
@@ -1005,9 +1010,9 @@ td.n { color: var(--text2); white-space: nowrap; }
       <div class="tageWahl" id="ePauseTage" style="margin-top:8px"></div>
       <div class="reihe" style="margin-top:8px">
         <div><label for="ePauseVon" data-i18n="fVon"></label>
-             <input type="time" id="ePauseVon" value="19:00"></div>
+             <input type="time" id="ePauseVon" value="12:00"></div>
         <div><label for="ePauseBis" data-i18n="fBis"></label>
-             <input type="time" id="ePauseBis" value="19:30"></div>
+             <input type="time" id="ePauseBis" value="12:30"></div>
       </div>
       <button type="button" class="klein" id="pauseHinzu" style="margin-top:8px" data-i18n="kPauseHinzu"></button>
       <div class="blockMeldung" id="pauseMeldung"></div>
@@ -1051,8 +1056,12 @@ td.n { color: var(--text2); white-space: nowrap; }
       <label for="eArtPlaetze" data-i18n="kArtPlaetze"></label>
       <input type="number" id="eArtPlaetze" min="0" max="99" step="1" value="1">
       <p class="hinweis" data-i18n="kArtPlaetzeHinweis"></p>
+      <label for="eArtProvider" data-i18n="artAnbieter"></label>
+      <select id="eArtProvider"></select>
+      <label for="eArtOrt" data-i18n="fOrt"></label>
+      <input type="text" id="eArtOrt" maxlength="120">
 
-      <button type="button" class="klein" id="artHinzu" style="margin-top:8px" data-i18n="kArtHinzu"></button>
+      <button type="button" class="knopf" id="artHinzu" style="margin-top:12px" data-i18n="kArtSpeichern"></button>
       <div class="blockMeldung" id="artMeldung"></div>
       <p class="hinweis" data-i18n="kArtenHinweis"></p>
     </div>
@@ -1077,6 +1086,24 @@ td.n { color: var(--text2); white-space: nowrap; }
     <label class="schalter" for="eVerwalter">
       <input type="checkbox" id="eVerwalter"><span data-i18n="eiAlsVerwalter"></span>
     </label>
+    <label class="schalter" for="ePlaner">
+      <input type="checkbox" id="ePlaner"><span data-i18n="eiAlsPlaner"></span>
+    </label>
+    <label class="schalter" for="eEinladen">
+      <input type="checkbox" id="eEinladen"><span data-i18n="eiEinladen"></span>
+    </label>
+    <label data-i18n="eiTerminarten"></label>
+    <p class="hinweis" data-i18n="eiTerminartenHinweis"></p>
+    <div id="eTerminarten" class="rechteArten"></div>
+    <div id="vollzugriffWahl">
+      <label class="schalter" for="eVollzugriff">
+        <input type="checkbox" id="eVollzugriff" checked><span data-i18n="eiVollzugriff"></span>
+      </label>
+      <label class="schalter" for="eKreiseAnlegen">
+        <input type="checkbox" id="eKreiseAnlegen"><span data-i18n="eiKreiseAnlegen"></span>
+      </label>
+      <p class="hinweis" data-i18n="eiZugangHinweis"></p>
+    </div>
     <p class="hinweis" data-i18n="eiHinweis"></p>
     <div id="einladenFehler" class="fehler"></div>
     <div id="einladenGut" class="gutText"></div>
@@ -1260,6 +1287,6 @@ td.n { color: var(--text2); white-space: nowrap; }
   </div>
 </dialog>
 
-<script type="module" src="app.js"></script>
+<script type="module" src="startup.js?v=16"></script>
 </body>
 </html>
